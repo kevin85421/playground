@@ -2,6 +2,7 @@
 
 * 使用 bazel 編譯 grpc v1.66.0: https://github.com/grpc/grpc/blob/master/BUILDING.md#build-from-source
 * 取代 [examples/cpp/helloworld](https://github.com/grpc/grpc/tree/v1.66.0/examples/cpp/helloworld) 中的 `greeter_server.cc` 和 `greeter_client.cc`
+* wait_for_ready doc: https://grpc.io/docs/guides/wait-for-ready/
 
 ```sh
 # 編譯
