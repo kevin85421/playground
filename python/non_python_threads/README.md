@@ -39,3 +39,13 @@ g++ example2.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example2
 # Python thread，因此應該看到兩個 threads。
 sudo env "PATH=$PATH" py-spy dump -p $PID
 ```
+
+## Example 3
+
+* 啟動兩個 Python threads，不需要等到其中一個 thread 呼叫 PyGILState_Release 才能執行另一個 thread。
+* Python threads 在呼叫 PyGILState_Release 後，py-spy 就看不到該 Python threads。
+
+```sh
+g++ example3.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example3
+./example3
+```
