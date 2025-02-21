@@ -65,3 +65,26 @@ g++ example3.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example3
 #   File "<string>", line 1, in <module>
 # AttributeError: '_thread._local' object has no attribute 'name'
 ```
+
+## Example 4
+
+* 呼叫 `PyEval_SaveThread` 釋放 GIL 並保存 thread state，並且呼叫 `PyEval_RestoreThread` 恢復 GIL 並恢復 thread state。
+* https://github.com/python/cpython/issues/130394
+
+```sh
+g++ example4.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example4
+./example4
+
+# [C++][08:47:05.366] Sleep 10 seconds
+# [C++][08:47:05.366] Hello from the default_pool in init_python_thread
+# [C++][08:47:05.367] Hello from the custom_pool in init_python_thread
+# Hello from default_pool, a = 1!
+# Hello from custom_pool, a = 1!
+# [C++][08:47:15.366] Hello from the default_pool in release_gstate
+# [C++][08:47:15.366] Hello from the custom_pool in release_gstate
+# a = 1 in release_gstate!
+# Traceback (most recent call last):
+#   File "<string>", line 1, in <module>
+# AttributeError: '_thread._local' object has no attribute 'name'
+# a = 1 in release_gstate!
+```
