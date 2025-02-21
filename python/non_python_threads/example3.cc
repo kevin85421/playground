@@ -26,9 +26,7 @@ PyGILState_STATE init_python_thread(std::string pool_name) {
     PyGILState_STATE gstate = PyGILState_Ensure();
     printf("[C++][%s] Hello from the %s in init_python_thread\n", 
            get_current_time().c_str(), pool_name.c_str());
-    std::string py_code = "import threading\n"
-                         "thread_local = threading.local()\n"
-                         "thread_local.name = '" + pool_name + "'\n"
+    std::string py_code = "thread_local.name = '" + pool_name + "'\n"
                          "print(f'Hello from {thread_local.name}!')";
     PyRun_SimpleString(py_code.c_str());
 
@@ -48,6 +46,7 @@ void release_gstate(PyGILState_STATE gstate, std::string pool_name) {
 int main(int argc, char *argv[]) {
     // 初始化 Python 解釋器
     Py_Initialize();
+    PyRun_SimpleString("import threading; thread_local = threading.local()");
 
     // 釋放 GIL，允許其他線程運行
     PyThreadState *_save = PyEval_SaveThread();

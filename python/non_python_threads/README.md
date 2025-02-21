@@ -45,25 +45,22 @@ sudo env "PATH=$PATH" py-spy dump -p $PID
 * 啟動兩個 threads，在 `default_pool` 呼叫 `release_gstate` 前
   * `custom_pool` 中的 `"[C++][%s] Hello from the %s in init_python_thread"` 先印出。
   * 直到 `default_pool` 呼叫 `release_gstate` 後，GIL 被釋放，`custom_pool` 中的 `print(f'Hello from {thread_local.name}!')` 才會印出。
-* 原本 `default_pool` 在 `init_python_thread` 時寫入的 `thread_local.name` 在 `custom_pool` 呼叫 `init_python_thread` 時似乎被覆蓋。
 * Python threads 在呼叫 PyGILState_Release 後，py-spy 就看不到該 Python threads。
 
 ```sh
 g++ example3.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example3
 ./example3
 
-# [C++][05:35:02.191] Sleep 10 seconds
-# [C++][05:35:02.191] Hello from the default_pool in init_python_thread
-# [C++][05:35:02.192] Hello from the custom_pool in init_python_thread
-# Hello from default_pool!
-# [C++][05:35:12.192] Sleep 60 seconds
-# [C++][05:35:12.192] Hello from the default_pool in release_gstate
+# [C++][22:06:21.281] Hello from the custom_pool in init_python_thread
+# [C++][22:06:21.280] Sleep 10 seconds
 # Hello from custom_pool!
-# [C++][05:35:12.192] Hello from the custom_pool in release_gstate
+# [C++][22:06:31.281] Sleep 60 seconds
+# [C++][22:06:31.281] Hello from the custom_pool in release_gstate
+# [C++][22:06:31.281] Hello from the default_pool in init_python_thread
+# Hello from default_pool!
+# [C++][22:06:31.281] Hello from the default_pool in release_gstate
+# Hello from default_pool in release_gstate!
 # Hello from custom_pool in release_gstate!
-# Traceback (most recent call last):
-#   File "<string>", line 1, in <module>
-# AttributeError: '_thread._local' object has no attribute 'name'
 ```
 
 ## Example 4
@@ -75,16 +72,17 @@ g++ example3.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example3
 g++ example4.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example4
 ./example4
 
-# [C++][08:47:05.366] Sleep 10 seconds
-# [C++][08:47:05.366] Hello from the default_pool in init_python_thread
-# [C++][08:47:05.367] Hello from the custom_pool in init_python_thread
+# [C++][22:02:01.658] Sleep 10 seconds
+# [C++][22:02:01.658] Hello from the default_pool in init_python_thread
 # Hello from default_pool, a = 1!
+# sys.getswitchinterval() = 0.005
+# [C++][22:02:01.658] Hello from the custom_pool in init_python_thread
 # Hello from custom_pool, a = 1!
-# [C++][08:47:15.366] Hello from the default_pool in release_gstate
-# [C++][08:47:15.366] Hello from the custom_pool in release_gstate
+# sys.getswitchinterval() = 0.005
+# [C++][22:02:11.658] Hello from the default_pool in release_gstate
+# [C++][22:02:11.658] Hello from the custom_pool in release_gstate
 # a = 1 in release_gstate!
-# Traceback (most recent call last):
-#   File "<string>", line 1, in <module>
-# AttributeError: '_thread._local' object has no attribute 'name'
+# thread_local.name = default_pool in release_gstate!
 # a = 1 in release_gstate!
+# thread_local.name = custom_pool in release_gstate!
 ```
