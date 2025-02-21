@@ -24,18 +24,24 @@ std::string get_current_time() {
 PyGILState_STATE init_python_thread(std::string pool_name) {
     // 確保當前線程獲得 GIL
     PyGILState_STATE gstate = PyGILState_Ensure();
-    printf("[%s] Hello from the %s in init_python_thread\n", 
+    printf("[C++][%s] Hello from the %s in init_python_thread\n", 
            get_current_time().c_str(), pool_name.c_str());
-    PyRun_SimpleString("print('Hello from the init_python_thread!')");
+    std::string py_code = "import threading\n"
+                         "thread_local = threading.local()\n"
+                         "thread_local.name = '" + pool_name + "'\n"
+                         "print(f'Hello from {thread_local.name}!')";
+    PyRun_SimpleString(py_code.c_str());
 
     // 不在這裡釋放 GIL，而是回傳 gstate
     return gstate;
 }
 
 void release_gstate(PyGILState_STATE gstate, std::string pool_name) {
-    printf("[%s] Hello from the %s in release_gstate\n", 
+    printf("[C++][%s] Hello from the %s in release_gstate\n", 
            get_current_time().c_str(), pool_name.c_str());
-    PyRun_SimpleString("print('Hello from the release_gstate!')");
+    PyRun_SimpleString("print(f'Hello from {thread_local.name} in release_gstate!')");
+
+    // 釋放 GIL
     PyGILState_Release(gstate);
 }
 
@@ -56,12 +62,14 @@ int main(int argc, char *argv[]) {
     });
 
     boost::asio::post(custom_pool, [&custom_gstate]() {
+        // 此 thread 會先執行 init_python_thread，直到 C++ log 印出，但是 Python log 並不會印出
+        // 直到 default_pool 呼叫 release_gstate 後，GIL 被釋放，Python log 才會印出。
         custom_gstate = init_python_thread("custom_pool");
     });
 
     // 等待 10 秒，custom_pool 應該要在 sleep 10 秒結束前就執行完 init_python_thread
     // 確認不需要等到 default_pool 呼叫 release_gstate 後，custom_pool 才會執行。
-    printf("[%s] Sleep 10 seconds\n", get_current_time().c_str());
+    printf("[C++][%s] Sleep 10 seconds\n", get_current_time().c_str());
     sleep(10);
 
     boost::asio::post(default_pool, [&default_gstate]() {
@@ -73,7 +81,7 @@ int main(int argc, char *argv[]) {
     });
 
     // Release 後 py-spy 就看不到該 Python threads
-    printf("[%s] Sleep 60 seconds\n", get_current_time().c_str());
+    printf("[C++][%s] Sleep 60 seconds\n", get_current_time().c_str());
     sleep(60);
 
     default_pool.join();
