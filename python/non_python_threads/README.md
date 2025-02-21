@@ -42,10 +42,26 @@ sudo env "PATH=$PATH" py-spy dump -p $PID
 
 ## Example 3
 
-* 啟動兩個 Python threads，不需要等到其中一個 thread 呼叫 PyGILState_Release 才能執行另一個 thread。
+* 啟動兩個 threads，在 `default_pool` 呼叫 `release_gstate` 前
+  * `custom_pool` 中的 `"[C++][%s] Hello from the %s in init_python_thread"` 先印出。
+  * 直到 `default_pool` 呼叫 `release_gstate` 後，GIL 被釋放，`custom_pool` 中的 `print(f'Hello from {thread_local.name}!')` 才會印出。
+* 原本 `default_pool` 在 `init_python_thread` 時寫入的 `thread_local.name` 在 `custom_pool` 呼叫 `init_python_thread` 時似乎被覆蓋。
 * Python threads 在呼叫 PyGILState_Release 後，py-spy 就看不到該 Python threads。
 
 ```sh
 g++ example3.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example3
 ./example3
+
+# [C++][05:35:02.191] Sleep 10 seconds
+# [C++][05:35:02.191] Hello from the default_pool in init_python_thread
+# [C++][05:35:02.192] Hello from the custom_pool in init_python_thread
+# Hello from default_pool!
+# [C++][05:35:12.192] Sleep 60 seconds
+# [C++][05:35:12.192] Hello from the default_pool in release_gstate
+# Hello from custom_pool!
+# [C++][05:35:12.192] Hello from the custom_pool in release_gstate
+# Hello from custom_pool in release_gstate!
+# Traceback (most recent call last):
+#   File "<string>", line 1, in <module>
+# AttributeError: '_thread._local' object has no attribute 'name'
 ```
