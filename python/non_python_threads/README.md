@@ -86,3 +86,28 @@ g++ example4.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example4
 # a = 1 in release_gstate!
 # thread_local.name = custom_pool in release_gstate!
 ```
+
+## Example 5
+
+* https://github.com/python/cpython/issues/130394#issuecomment-2676346729
+  * Python 社群說就算沒有 PyEval_SaveThread 過了 switch interval 後 GIL 仍該被釋放。
+  * 表現如同上方所述，但是有時候 Python 的 log 會在 10 秒後才印出，不知為何。 
+
+```sh
+g++ example5.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example5
+./example5
+
+# [C++][00:41:02.663] Sleep 10 seconds
+# [C++][00:41:02.663] Hello from the default_pool in init_python_thread
+# [C++][00:41:02.663] Hello from the custom_pool in init_python_thread
+# [Python][00:41:02.664] Hello from default_pool, a = 1!
+# [Python][00:41:02.664] sys.getswitchinterval() = 0.005
+# [C++][00:41:12.663] Hello from the default_pool in release_gstate
+# [Python][00:41:02.664] Hello from custom_pool, a = 1!
+# [Python][00:41:12.664] a = 1 in release_gstate!
+# [Python][00:41:12.664] thread_local.name = default_pool in release_gstate!
+# [Python][00:41:12.664] sys.getswitchinterval() = 0.005
+# [C++][00:41:12.664] Hello from the custom_pool in release_gstate
+# [Python][00:41:12.664] a = 1 in release_gstate!
+# [Python][00:41:12.664] thread_local.name = custom_pool in release_gstate!
+```
