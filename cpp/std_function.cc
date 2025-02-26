@@ -14,12 +14,22 @@ std::function<int(int)> getEchoFunction() {
     };
 }
 
+// outerFunction 是一個 function 回傳一個 void function，
+std::function<std::function<void()>()> outerFunction = []() -> std::function<void()> {
+    return []() {
+        std::cout << "Hello, World!" << std::endl;
+    };
+};
+
 int main() {
     auto add = getAdditionFunction();
     std::cout << "3 + 4 = " << add(3, 4) << std::endl; // 7
 
     auto echo = getEchoFunction();
     std::cout << "echo(1) = " << echo(1) << std::endl; // 1
+
+    std::function<void()> innerFunction = outerFunction();
+    innerFunction();
 
     return 0;
 }
