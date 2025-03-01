@@ -111,3 +111,27 @@ g++ example5.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example5
 # [Python][00:41:12.664] a = 1 in release_gstate!
 # [Python][00:41:12.664] thread_local.name = custom_pool in release_gstate!
 ```
+
+## Example 6
+
+* 沒有在 main function 中傳入 PyGILState_STATE 到 `init_python_thread`，而是在 `init_python_thread` 中呼叫 `PyGILState_Ensure` 來取得，並且將 `PyGILState_STATE` 傳遞給 callback function，之後再使用 `PyGILState_Release` 來釋放。
+* [PyGILState_STATE](https://github.com/python/cpython/blob/75f38af7810af1c3ca567d6224a975f85aef970f/Include/pystate.h#L76-L78) 只是一個 enum，不是 PyObject，所以不會被 Python interpreter 管理。
+
+
+is merely an enum. It is not a PyObject, so it is not managed by reference counting.
+
+```sh
+g++ example6.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example6
+./example6
+
+# [C++][09:18:50.471] First post in default_pool
+# [C++][09:18:50.472] First post in custom_pool
+# [C++][09:18:50.472] Hello from the default_pool in init_python_thread
+# [Python][09:18:50.472] Hello from default_pool!
+# [C++][09:18:50.472] Second post in default_pool
+# [C++] PyGILState_Release()
+# [C++][09:18:50.472] Hello from the custom_pool in init_python_thread
+# [Python][09:18:50.472] Hello from custom_pool!
+# [C++][09:18:50.472] Second post in custom_pool
+# [C++] PyGILState_Release()
+```
