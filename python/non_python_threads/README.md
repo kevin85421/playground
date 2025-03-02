@@ -115,10 +115,7 @@ g++ example5.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example5
 ## Example 6
 
 * 沒有在 main function 中傳入 PyGILState_STATE 到 `init_python_thread`，而是在 `init_python_thread` 中呼叫 `PyGILState_Ensure` 來取得，並且將 `PyGILState_STATE` 傳遞給 callback function，之後再使用 `PyGILState_Release` 來釋放。
-* [PyGILState_STATE](https://github.com/python/cpython/blob/75f38af7810af1c3ca567d6224a975f85aef970f/Include/pystate.h#L76-L78) 只是一個 enum，不是 PyObject，所以不會被 Python interpreter 管理。
-
-
-is merely an enum. It is not a PyObject, so it is not managed by reference counting.
+* [PyGILState_STATE](https://github.com/python/cpython/blob/75f38af7810af1c3ca567d6224a975f85aef970f/Include/pystate.h#L76-L78) 只是一個 enum，不是 PyObject，所以不會被 Python interpreter 管理。(目前理解)
 
 ```sh
 g++ example6.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example6
