@@ -1,0 +1,15 @@
+# Bazel 產生的目錄
+/bazel-*
+
+# Bazel 快取目錄
+.cache/
+
+.vscode/
+
+# Bazel 輸出目錄
+/dist/
+/out/
+
+# Bazel 相關暫存檔
+*.swp
+*.swo 
