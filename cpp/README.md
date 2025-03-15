@@ -45,3 +45,13 @@ g++ -fsanitize=address -g unique_ptr_release_memory_leak.cc -o memory_leak
 
 # 修正方法：加上 `delete raw_ptr;` 釋放記憶體，重新 build 就不會出錯。
 ```
+
+# boost::asio::thread_pool 使用 `join()` / `wait()` 的差異
+
+* thread_pool 的 `join()` 和 `wait()` 應該是完全相同的 ([reference](https://github.com/boostorg/asio/blob/2af02fa2c817a61c30762713d791962e448e35b4/include/boost/asio/impl/thread_pool.ipp#L151))，此外使用 `join()` 之後 thread_pool 不能再提交任務。
+* Ray 使用 Boost 1.81
+
+```sh
+# root directory
+bazel run //:thread_pool_wait_and_join
+```
