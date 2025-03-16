@@ -6,3 +6,11 @@ cc_binary(
         "@boost//:system",
     ],
 ) 
+
+cc_binary(
+    name = "thread_pool_stop",
+    srcs = ["cpp/thread_pool_stop.cc"],
+    deps = [
+        "@boost//:asio",
+    ],
+)

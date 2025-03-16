@@ -52,6 +52,24 @@ g++ -fsanitize=address -g unique_ptr_release_memory_leak.cc -o memory_leak
 * Ray 使用 Boost 1.81
 
 ```sh
-# root directory
+# repo root directory
 bazel run //:thread_pool_wait_and_join
+```
+
+# boost::asio::thread_pool `stop()`
+
+* https://beta.boost.org/doc/libs/1_81_0/doc/html/boost_asio/reference/thread_pool.html
+* 使用 `stop()` 之後，如果已經 `post()` 但還沒有被執行的任務，會被捨棄，但如果 thread 正在執行的任務，會繼續執行直到完成。
+* 如果只有單純使用 `join()` 則會等待所有 `post()` 的任務完成。
+
+```sh
+# repo root directory
+bazel run //:thread_pool_stop
+
+# [22:30:53] Task 0 started.
+# [22:30:53] Task 1 started.
+# [22:30:54] Calling pool.stop()...
+# [22:30:56] Task 0 finished.
+# [22:30:56] Task 1 finished.
+# [22:30:56] Thread pool terminated.
 ```
