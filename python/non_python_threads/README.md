@@ -132,3 +132,12 @@ g++ example6.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example6
 # [C++][09:18:50.472] Second post in custom_pool
 # [C++] PyGILState_Release()
 ```
+
+## Example 7
+
+* 連續呼叫兩次 `PyGILState_Release` 會導致 segfault。
+
+```sh
+g++ example6.cc -I/usr/include/python3.9 -lpython3.9 -lpthread -o example7
+./example7
+```
