@@ -16,3 +16,17 @@ cat /proc/512413/comm
 # 因此實際可用的長度通常會更短。這個限制意味著如果設定的名稱超過這個長度，可能會被截斷或無法完整顯示。
 # my_python_proce
 ```
+
+## subprocess.Popen.wait()
+
+* 如果沒有呼叫 `wait()` 的話，process 會變成 zombie process。
+
+```bash
+python3 subprocess_wait.py
+# [Example output]:
+# pid: 2553978 exists: True
+
+# uncomment `process.wait()`
+# [Example output]:
+# pid: 2554148 exists: False
+```
