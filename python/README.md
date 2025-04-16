@@ -30,3 +30,33 @@ python3 subprocess_wait.py
 # [Example output]:
 # pid: 2554148 exists: False
 ```
+
+## 存取 Python class 的屬性
+
+* 首先會先檢查 `__dict__` 中是否存在該屬性。
+* 如果沒有，則會呼叫 `__getattr__`。
+* 如果 `__getattr__` 也沒有，則會拋出 `AttributeError`。
+
+此例子中，在 `__del__` 中存取已經被移除 `__dict__` 的屬性 `hello`，因此
+呼叫 `__getattr__` 時，但是 `__getattr__` 存取 `world` 時，但是 `world` 也
+不存在於 `__dict__` 中，因此又呼叫 `__getattr__`，如此不停 recursive。
+
+```bash
+python3 access_non_exist_attr.py
+
+# hello world
+# {'hello': 'hello', 'world': 'world'}
+# Call __del__
+# Exception ignored in: <function MyClass.__del__ at 0x7ff48b34a680>
+# Traceback (most recent call last):
+#   File "access_non_exist_attr.py", line 8, in __del__
+#     self.hello
+#   File "access_non_exist_attr.py", line 11, in __getattr__
+#     if self.world == "world":
+#   File "access_non_exist_attr.py", line 11, in __getattr__
+#     if self.world == "world":
+#   File "access_non_exist_attr.py", line 11, in __getattr__
+#     if self.world == "world":
+#   [Previous line repeated 496 more times]
+# RecursionError: maximum recursion depth exceeded while calling a Python object
+```
