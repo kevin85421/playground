@@ -60,3 +60,34 @@ python3 access_non_exist_attr.py
 #   [Previous line repeated 496 more times]
 # RecursionError: maximum recursion depth exceeded while calling a Python object
 ```
+
+## `getattr` / `__getattr__` / `__getattribute__` 比較
+
+```bash
+python3 access_attr.py
+
+# Case 1: e.existing which is exist in __dict__
+# __getattribute__ called with: existing
+# I exist
+# --------------------------------------------------
+# Case 2: e.dynamic which is not exist in __dict__, but can be handled by __getattr__
+# __getattribute__ called with: dynamic
+# __getattr__ called with: dynamic
+# I am dynamic!
+# --------------------------------------------------
+# Case 3: getattr existing attribute
+# __getattribute__ called with: existing
+# I exist
+# --------------------------------------------------
+# Case 4: getattr non-existent attribute
+# __getattribute__ called with: non_existent
+# __getattr__ called with: non_existent
+# __getattribute__ called with: __class__
+# default value
+```
+
+* `getattr` 會先呼叫 `__getattribute__`，如果 `__getattribute__` 找不到，
+  則會呼叫 `__getattr__`。
+* `__getattribute__` 會直接存取屬性，不會去呼叫 `__getattr__`。
+* `__getattr__` 只有在 `__getattribute__` 找不到屬性時，才會被呼叫。
+
