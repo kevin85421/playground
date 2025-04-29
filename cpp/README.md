@@ -73,3 +73,14 @@ bazel run //:thread_pool_stop
 # [22:30:56] Task 1 finished.
 # [22:30:56] Thread pool terminated.
 ```
+
+# 使用 `boost::asio::io_context` 實作 thread pool
+
+```sh
+g++ io_context_thread_pool.cc -o io_context_thread_pool -pthread
+./io_context_thread_pool
+```
+
+* 在每個 thread 中呼叫 `io_context->run()`，這樣每個 thread 都會進入一個循環，不斷從 io_context 取出任務並執行。
+* 只要 io_context 有任務（例如你用 post() 加進來的 lambda），這個 thread 就會執行這些任務。
+* 如果沒有任務，run() 會阻塞（等待新任務），除非 work guard 被釋放或 io_context->stop() 被呼叫。
