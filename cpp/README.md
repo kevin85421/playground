@@ -79,6 +79,8 @@ bazel run //:thread_pool_stop
 ```sh
 g++ io_context_thread_pool.cc -o io_context_thread_pool -pthread
 ./io_context_thread_pool
+# thread pool 有四個 threads，每個任務會 sleep 1 秒，因此約 25 秒結束，
+# 如果所有任務在 25 秒左右完成，則代表 scheduler 是公平的。
 ```
 
 * 在每個 thread 中呼叫 `io_context->run()`，這樣每個 thread 都會進入一個循環，不斷從 io_context 取出任務並執行。
