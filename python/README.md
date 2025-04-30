@@ -91,3 +91,33 @@ python3 access_attr.py
 * `__getattribute__` 會直接存取屬性，不會去呼叫 `__getattr__`。
 * `__getattr__` 只有在 `__getattribute__` 找不到屬性時，才會被呼叫。
 
+# Python dump heap
+
+* https://blog.jjyao.me/blog/2024/09/13/python-heap-dump/
+* https://github.com/zhuyifei1999/guppy3?tab=readme-ov-file
+
+```sh
+python3 -c "import time; l=[]; [print(i) or l.append(i) or time.sleep(1) for i in range(1000)]"
+
+# Get PID
+ps aux | grep "range(1000)"
+
+# Attach to PID
+pyrasite-shell $PID
+
+# Dump heap
+>>> from guppy import hpy; h=hpy(); h.heap()
+Partition of a set of 51514 objects. Total size = 6100043 bytes.
+ Index  Count   %     Size   % Cumulative  % Kind (class / dict of class)
+     0  15356  30  1413167  23   1413167  23 str
+     1  10339  20   723872  12   2137039  35 tuple
+     2   3514   7   620746  10   2757785  45 types.CodeType
+     3    683   1   587376  10   3345161  55 type
+     4   6853  13   500138   8   3845299  63 bytes
+     5   3246   6   441456   7   4286755  70 function
+     6    683   1   334528   5   4621283  76 dict of type
+     7    144   0   254328   4   4875611  80 dict of module
+     8    456   1   198880   3   5074491  83 dict (no owner)
+     9    106   0   113008   2   5187499  85 set
+<183 more rows. Type e.g. '_.more' to view.>
+```
