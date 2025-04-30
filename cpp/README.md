@@ -86,3 +86,26 @@ g++ io_context_thread_pool.cc -o io_context_thread_pool -pthread
 * 在每個 thread 中呼叫 `io_context->run()`，這樣每個 thread 都會進入一個循環，不斷從 io_context 取出任務並執行。
 * 只要 io_context 有任務（例如你用 post() 加進來的 lambda），這個 thread 就會執行這些任務。
 * 如果沒有任務，run() 會阻塞（等待新任務），除非 work guard 被釋放或 io_context->stop() 被呼叫。
+
+# `boost::asio::make_work_guard`
+
+* 使用 work guard 避免 io_context 因為沒有任務而自動結束 (`io_context.run()` 返回)。而是當呼叫 `work_guard.reset()` 後 `io_context.run()` 才會返回。
+* Example 1 ([without_work_guard.cc](./without_work_guard.cc))：此例子中 `io_context.run()` 會立刻返回，因為沒有任務。
+  ```sh
+  g++ without_work_guard.cc -pthread -o without_work_guard; ./without_work_guard
+  # Output:
+  before sleep 5 seconds
+  before io_context run
+  after io_context run
+  after sleep 5 seconds
+  ```
+* Example 2 ([with_work_guard.cc](./with_work_guard.cc))：此例子中 `io_context.run()` 會阻塞，直到 `work_guard.reset()` 被呼叫。
+  ```sh
+  g++ with_work_guard.cc -pthread -o with_work_guard; ./with_work_guard
+  # Output:
+  before sleep 5 seconds
+  before io_context run
+  after sleep 5 seconds
+  reset work_guard so that io_context.run() will return.
+  after io_context run
+  ```
