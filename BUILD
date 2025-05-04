@@ -14,3 +14,19 @@ cc_binary(
         "@boost//:asio",
     ],
 )
+
+cc_binary(
+    name = "flat_hash_map_with_normal_ptr",
+    srcs = ["cpp/flat_hash_map_with_normal_ptr.cc"],
+    deps = [
+        "@absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_binary(
+    name = "flat_hash_map_with_smart_ptr",
+    srcs = ["cpp/flat_hash_map_with_smart_ptr.cc"],
+    deps = [
+        "@absl//absl/container:flat_hash_map",
+    ],
+)

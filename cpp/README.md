@@ -109,3 +109,47 @@ g++ io_context_thread_pool.cc -o io_context_thread_pool -pthread
   reset work_guard so that io_context.run() will return.
   after io_context run
   ```
+
+# `flat_hash_map` 使用 pointer 指向 value
+
+## 使用 normal pointer 指向 value
+
+* 如果 map 儲存太多 elements 可能會造成 rehash，會分配更多記憶體，所有 values 的位置會改變。
+* 在 `flat_hash_map_with_normal_ptr.cc` 之中，我們使用 `flat_hash_map` 並且呼叫 `rehash`，之後比較同一個 key 的 value 所對應的 address 是否相同。結果為不同。
+
+```sh
+# path: playground/
+bazel run //:flat_hash_map_with_normal_ptr
+
+# [Example output]
+# Before rehash, address: 0x55581a288108
+# Updated value at old address: updated value
+# After rehash, address:  0x55581a289208
+# Value from new address: value0
+# Address changed after rehash!
+# The value at the old address updated after rehash doesn't affect the value at the new address.
+```
+
+## 使用 smart pointer 指向 value
+
+* 在 rehash 之後同一個 key 的 value 的 address 不會改變，因此可以安全地使用 pointer 指向 value。
+
+```sh
+# path: playground/
+bazel run //:flat_hash_map_with_smart_ptr
+
+# [Example output]
+# Before rehash, value: value0
+# Before rehash, address: 0x55c56a7c2ec0
+# Before rehash, use count: 2
+# After rehash, value: value0
+# After rehash, address: 0x55c56a7c2ec0
+# After rehash, use count: 3
+
+# After updating via old_ptr:
+# Value via old_ptr: updated value
+# Value via new_ptr: updated value
+# Value via map[0]: updated value
+
+# Same object! Both pointers refer to the same memory.
+```
