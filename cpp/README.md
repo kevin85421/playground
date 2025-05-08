@@ -92,6 +92,8 @@ g++ cond_var_thread_pool.cc -pthread -o cond_var_thread_pool
 ./cond_var_thread_pool
 ```
 
+* reference: https://www.geeksforgeeks.org/thread-pool-in-cpp/
+
 # `boost::asio::make_work_guard`
 
 * 使用 work guard 避免 io_context 因為沒有任務而自動結束 (`io_context.run()` 返回)。而是當呼叫 `work_guard.reset()` 後 `io_context.run()` 才會返回。
