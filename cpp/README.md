@@ -79,13 +79,18 @@ bazel run //:thread_pool_stop
 ```sh
 g++ io_context_thread_pool.cc -o io_context_thread_pool -pthread
 ./io_context_thread_pool
-# thread pool 有四個 threads，每個任務會 sleep 1 秒，因此約 25 秒結束，
-# 如果所有任務在 25 秒左右完成，則代表 scheduler 是公平的。
 ```
 
 * 在每個 thread 中呼叫 `io_context->run()`，這樣每個 thread 都會進入一個循環，不斷從 io_context 取出任務並執行。
 * 只要 io_context 有任務（例如你用 post() 加進來的 lambda），這個 thread 就會執行這些任務。
 * 如果沒有任務，run() 會阻塞（等待新任務），除非 work guard 被釋放或 io_context->stop() 被呼叫。
+
+# 使用 `condition_variable` 實作 thread pool
+
+```sh
+g++ cond_var_thread_pool.cc -pthread -o cond_var_thread_pool
+./cond_var_thread_pool
+```
 
 # `boost::asio::make_work_guard`
 

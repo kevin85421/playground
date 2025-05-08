@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <iostream>
+#include <cmath>
 
 class IoContextThreadPool {
 public:
@@ -19,6 +20,15 @@ public:
             threads_.emplace_back([ctx = ioContext_] {
                 ctx->run();
             });
+        }
+    }
+
+    void Join() {
+        workGuard_.reset();
+        for (auto &t : threads_) {
+            if (t.joinable()) {
+                t.join();
+            }
         }
     }
 
@@ -53,20 +63,30 @@ private:
 
 // Example usage:
 int main() {
-    IoContextThreadPool pool(4);
-    for (int i = 0; i < 100; ++i) {
-        pool.post([i]{
-            auto now = std::chrono::system_clock::now();
-            auto now_time_t = std::chrono::system_clock::to_time_t(now);
-            std::cout << "Timestamp: " << std::ctime(&now_time_t);
-            std::cout << "Thread ID: " << std::this_thread::get_id() << " - ";
-            std::cout << "Hello, World! " << i << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        });
+    std::cout << "Start posting tasks..." << std::endl;
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    // Create an atomic counter to track task completion
+    std::atomic<int> taskCounter(0);
+    {
+        IoContextThreadPool pool(4);
+        for (int i = 0; i < 1000000; ++i) {
+            pool.post([i, &taskCounter]{
+                double result = 0;
+                for (int k = 0; k < 100; ++k) {
+                    result += std::sin(static_cast<double>(k)) * std::cos(static_cast<double>(i + k));
+                }
+                taskCounter.fetch_add(1, std::memory_order_relaxed);
+            });
+        }
+        // Make sure all tests finished
+        pool.Join();
     }
-    // Pool destructor will wait for tasks to finish and threads to join
-    // Wait for all tasks to complete
-    std::cout << "Waiting for all tasks to complete..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(60));
+    assert(taskCounter.load(std::memory_order_relaxed) == 1000000);
+    std::cout << "All tasks posted. " << taskCounter.load(std::memory_order_relaxed) << " tasks completed." << std::endl;
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "Total time taken: " << duration.count() << " milliseconds" << std::endl;
     return 0;
 }
