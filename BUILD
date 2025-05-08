@@ -30,3 +30,11 @@ cc_binary(
         "@absl//absl/container:flat_hash_map",
     ],
 )
+
+cc_binary(
+    name = "boost_latch",
+    srcs = ["cpp/boost_latch.cc"],
+    deps = [
+        "@boost//:thread",
+    ],
+)
