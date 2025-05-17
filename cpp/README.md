@@ -170,7 +170,7 @@ bazel run //:boost_latch
 * C++ `std::latch ` 是 C++ 20 才加入的 (reference: https://en.cppreference.com/w/cpp/thread)，因此我們使用 [boost::thread::latch](https://www.boost.org/doc/libs/1_81_0/doc/html/thread/synchronization.html#thread.synchronization.latches) 來實作。
 * 此外 `boost::thread::latch` 也支持一些 std 沒有的功能，像是 `wait_until` 可以設定 timeout。
 
-# namespace
+# `namespace`
 
 ```sh
 g++ cpp_namespace.cc -o cpp_namespace
@@ -178,3 +178,21 @@ g++ cpp_namespace.cc -o cpp_namespace
 ```
 * `A::hello()` 是 namespace A 中的 hello 函數。
 * `::hello()` 是 global namespace中的 hello 函數。
+
+# "returning reference to temporary"
+
+```cpp
+const std::string& GetMessage() {
+    return std::string("hello world");
+}
+```
+* `std::string("hello world")` 是一個 temporary object。
+* 這個 temporary 在 GetMessage() 結束時就會被銷毀。
+* 你回傳的是一個對這個已被銷毀的物件的參考（reference）。
+* 在 main() 裡使用這個 reference 時，就變成了「dangling reference」
+* Solution: 回傳 `const std::string` 而不是 `const std::string&`
+
+```sh
+g++ return_ref_to_temp.cc -o return_ref_to_temp
+./return_ref_to_temp
+```
