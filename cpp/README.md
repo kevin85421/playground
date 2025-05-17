@@ -169,3 +169,12 @@ bazel run //:boost_latch
 
 * C++ `std::latch ` 是 C++ 20 才加入的 (reference: https://en.cppreference.com/w/cpp/thread)，因此我們使用 [boost::thread::latch](https://www.boost.org/doc/libs/1_81_0/doc/html/thread/synchronization.html#thread.synchronization.latches) 來實作。
 * 此外 `boost::thread::latch` 也支持一些 std 沒有的功能，像是 `wait_until` 可以設定 timeout。
+
+# namespace
+
+```sh
+g++ cpp_namespace.cc -o cpp_namespace
+./cpp_namespace
+```
+* `A::hello()` 是 namespace A 中的 hello 函數。
+* `::hello()` 是 global namespace中的 hello 函數。
