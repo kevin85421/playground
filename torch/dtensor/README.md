@@ -26,7 +26,10 @@ torchrun --nproc_per_node=4 full_tensor_example.py
 # [rank0]:[W604 08:55:15.856186408 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
 ```
 
-# DTensor: 使用 NCCL 傳送 local shard 給 rank 0，並且在 rank 0 上 concat 所有 shard 成為 full tensor ([gather_shards_and_concat.py](./gather_shards_and_concat.py))
+# [gather_shards_and_concat.py](./gather_shards_and_concat.py)
+
+* 使用 NCCL 傳送 local shard 給 rank 0，並且在 rank 0 上 concat 所有 shard 成為 full tensor
+
 
 ```sh
 torchrun --nproc_per_node=4 gather_shards_and_concat.py
