@@ -62,7 +62,7 @@ torchrun --nproc_per_node=4 gather_shards_and_concat.py
     * 在一個 process 中 `CUDA_VISIBLE_DEVICES=0`，`device=0` 為 `cuda:0`
     * 在一個 process 中 `CUDA_VISIBLE_DEVICES=1`，`device=0` 為 `cuda:1`
 
-* 此例子中有 4 個 process，每個 process 有 1 個 GPU，每個 process 有一個 dtensor shard，接著呼叫 `dtensor.to(device=device)` 會把 local shard 傳送到 `device` 上，並且在 `device` 上建立一個新的 dtensor shard。
+* 此例子中有 4 個 process，每個 process 有 1 個 GPU，每個 process 有一個 dtensor shard，接著呼叫 `dtensor.to(device=device)` 會把 local shard 傳送到 `device` 上，在此例中由於每個 process 只有一個 GPU，因此 local shard 仍會在同一個 GPU 上。再來呼叫 `full_tensor()` 會收集完整的 tensor，因此每個 process 中都會有完整的 tensor。
 
 ```sh
 torchrun --nproc_per_node=4 dtensor_to.py
@@ -80,4 +80,50 @@ torchrun --nproc_per_node=4 dtensor_to.py
 # [Rank 3] Local shard: tensor([3.], device='cuda:3')
 # [Rank 3] full_tensor: tensor([0., 1., 2., 3.], device='cuda:3')
 # [rank0]:[W605 09:02:50.822133667 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+```
+
+# 使用 NCCL send / recv 模擬 all_gather
+
+* [simulate_all_gather.py](./simulate_all_gather.py)
+
+```sh
+torchrun --nproc_per_node=4 simulate_all_gather.py
+
+rank 小的先 recv，rank 大的先 send
+# [Rank 0] Original tensor: tensor([0., 1., 2., 3.], device='cuda:0')
+# [Rank 0] Local shard: tensor([0.], device='cuda:0')
+# [Rank 1] Local shard: tensor([1.], device='cuda:1')
+# [Rank 1] Sending shard to rank 0
+# [Rank 0] Receiving shard from rank 1
+# [Rank 3] Local shard: tensor([3.], device='cuda:3')
+# [Rank 3] Sending shard to rank 0
+# [Rank 0] Receiving shard from rank 2
+# [Rank 2] Local shard: tensor([2.], device='cuda:2')
+# [Rank 2] Sending shard to rank 0
+# [Rank 0] Receiving shard from rank 3
+# [Rank 2] Sending shard to rank 1
+# [Rank 1] Receiving shard from rank 2
+# [Rank 3] Sending shard to rank 1
+# [Rank 1] Receiving shard from rank 3
+# [Rank 3] Sending shard to rank 2
+# [Rank 2] Receiving shard from rank 3
+
+rank 小的 send，rank 大的 recv
+# [Rank 0] Sending shard to rank 1
+# [Rank 1] Receiving shard from rank 0
+# [Rank 0] Sending shard to rank 2
+# [Rank 2] Receiving shard from rank 0
+# [Rank 0] Sending shard to rank 3
+# [Rank 3] Receiving shard from rank 0
+# [Rank 1] Sending shard to rank 2
+# [Rank 2] Receiving shard from rank 1
+# [Rank 1] Sending shard to rank 3
+# [Rank 3] Receiving shard from rank 1
+# [Rank 2] Sending shard to rank 3
+# [Rank 3] Receiving shard from rank 2
+
+# [Rank 0] Gathered full tensor: tensor([0., 1., 2., 3.], device='cuda:0')
+# [Rank 1] Gathered full tensor: tensor([1., 1., 2., 3.], device='cuda:1')
+# [Rank 2] Gathered full tensor: tensor([2., 2., 2., 3.], device='cuda:2')
+# [Rank 3] Gathered full tensor: tensor([3., 3., 3., 3.], device='cuda:3')
 ```
