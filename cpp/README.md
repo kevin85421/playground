@@ -196,3 +196,23 @@ const std::string& GetMessage() {
 g++ return_ref_to_temp.cc -o return_ref_to_temp
 ./return_ref_to_temp
 ```
+
+# error: cannot bind non-const lvalue reference of type ‘int&’ to an rvalue of type ‘int’
+
+* `lvalue`: 判斷方法為：能不能對它取位址或放在賦值運算子 (`=`) 的左邊。如果可以，則為 `lvalue`。
+* `rvalue`: 沒有持久記憶體位置，僅用來計算或傳遞的運算式。不能放在賦值運算子 (`=`) 的左邊。
+* 在 [bind_non_const_lvalue_to_rvalue.cc](./bind_non_const_lvalue_to_rvalue.cc) 中，`void foo(int& x)` 的參數是 `int&`，但是 `foo(42)` 的 `42` 是 `int` 為 `rvalue` 無法取位址，因此編譯錯誤。
+* Solution: 將 `void foo(int& x)` 改成 `void foo(const int& x)`。
+
+```sh
+g++ bind_non_const_lvalue_to_rvalue.cc -o bind_non_const_lvalue_to_rvalue
+
+# Compile error:
+# bind_non_const_lvalue_to_rvalue.cc: In function ‘int main()’:
+# bind_non_const_lvalue_to_rvalue.cc:9:9: error: cannot bind non-const lvalue reference of type ‘int&’ to an rvalue of type ‘int’
+#     9 |     foo(42);
+#       |         ^~
+# bind_non_const_lvalue_to_rvalue.cc:4:15: note:   initializing argument 1 of ‘void foo(int&)’
+#     4 | void foo(int& x) {
+#       |          ~~~~~^
+```
