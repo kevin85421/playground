@@ -7,6 +7,7 @@ from typing import Optional
 import torch
 import torch.distributed as dist
 from torch import nn
+from torch.autograd import Function
 
 # ------------------------
 # Distributed setup helpers
@@ -41,34 +42,60 @@ def get_mp_world_size():
     return dist.get_world_size(group=_MODEL_PARALLEL_GROUP)
 
 # ------------------------
+# Megatron-LM style communication functions
+# ------------------------
+class F(Function):
+    """Identity in forward, All‑Reduce in backward (gathers gradients)."""
+    @staticmethod
+    def forward(ctx, x: torch.Tensor):
+        return x
+
+    @staticmethod
+    def backward(ctx, grad_output: torch.Tensor):
+        dist.all_reduce(grad_output, op=dist.ReduceOp.SUM, group=get_mp_group())
+        return grad_output
+
+def f(x: torch.Tensor) -> torch.Tensor:
+    return F.apply(x)
+
+class G(Function):
+    """All‑Reduce in forward, identity in backward (broadcasts activations)."""
+    @staticmethod
+    def forward(ctx, x: torch.Tensor):
+        dist.all_reduce(x, op=dist.ReduceOp.SUM, group=get_mp_group())
+        return x
+
+    @staticmethod
+    def backward(ctx, grad_output: torch.Tensor):
+        return grad_output
+
+def g(x: torch.Tensor) -> torch.Tensor:
+    return G.apply(x)
+
+# ------------------------
 # Tensor Parallel Linear layers
 # ------------------------
 class ColumnParallelLinear(nn.Module):
     """Output‑dim sliced linear layer (Megatron: ColumnParallelLinear)."""
-    def __init__(self, input_dim: int, output_dim: int, bias: bool = True, gather_output: bool = False):
+    def __init__(self, input_dim: int, output_dim: int):
         super().__init__()
-        self.gather_output = gather_output
         self.mp_world_size = get_mp_world_size()
         assert output_dim % self.mp_world_size == 0, "output_dim must be divisible by mp_world_size"
         output_dim_per_part = output_dim // self.mp_world_size
-        self.linear = nn.Linear(input_dim, output_dim_per_part, bias=bias)
+        self.linear = nn.Linear(input_dim, output_dim_per_part)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.linear(x)
-        if self.gather_output:
-            out_list = [torch.empty_like(out) for _ in range(self.mp_world_size)]
-            dist.all_gather(out_list, out, group=get_mp_group())
-            out = torch.cat(out_list, dim=-1)
         return out
 
 class RowParallelLinear(nn.Module):
     """Input‑dim sliced linear layer (Megatron: RowParallelLinear)."""
-    def __init__(self, input_dim: int, output_dim: int, bias: bool = True):
+    def __init__(self, input_dim: int, output_dim: int):
         super().__init__()
         self.mp_world_size = get_mp_world_size()
         assert input_dim % self.mp_world_size == 0, "input_dim must be divisible by mp_world_size"
         input_dim_per_part = input_dim // self.mp_world_size
-        self.linear = nn.Linear(input_dim_per_part, output_dim, bias=bias)
+        self.linear = nn.Linear(input_dim_per_part, output_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         chunks = torch.chunk(x, self.mp_world_size, dim=-1)
@@ -85,7 +112,7 @@ class TPMLP(nn.Module):
     def __init__(self, hidden_size: int, ffn_hidden_size: int, activation: type[nn.Module] = nn.GELU, dropout_p: float = 0.0):
         super().__init__()
         # fc1 是 Megatron 論文 Fig. 3(a) 中的 `A`，需要垂直切成 A1, A2。
-        self.fc1 = ColumnParallelLinear(hidden_size, ffn_hidden_size, gather_output=False)
+        self.fc1 = ColumnParallelLinear(hidden_size, ffn_hidden_size)
         self.act = activation()
         # fc2 是 Megatron 論文 Fig. 3(a) 中的 `B`，需要水平切成 B1, B2。
         self.dropout = nn.Dropout(dropout_p)
@@ -93,18 +120,18 @@ class TPMLP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Y = GeLU(XA)
-        x = self.fc1(x)
-        x = self.act(x)
+        x = f(x)
+        y = self.act(self.fc1(x))
         # Z = Dropout(YB)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        return x
+        yb = self.fc2(y)
+        z = self.dropout(g(yb))
+        return z
 
 # ------------------------
 # Tensor Parallel Attention
 # ------------------------
 class TPAttention(nn.Module):
-    """Self‑Attention with Tensor Parallel projections."""
+    """Self‑Attention with Tensor Parallel projections following Megatron-LM design."""
     def __init__(self, hidden_size: int, num_attention_heads: int, dropout_p: float = 0.0):
         super().__init__()
         assert hidden_size % num_attention_heads == 0
@@ -112,40 +139,68 @@ class TPAttention(nn.Module):
         self.num_heads = num_attention_heads
         self.head_dim = hidden_size // num_attention_heads
         self.scale = 1.0 / math.sqrt(self.head_dim)
-        self.qkv_proj = ColumnParallelLinear(hidden_size, 3 * hidden_size, gather_output=True)
-        self.out_proj = RowParallelLinear(hidden_size, hidden_size)
+        
+        # Get world size for tensor parallelism
+        tp_world_size = get_mp_world_size()
+        
+        # Each rank handles num_heads // world_size heads
+        self.num_heads_per_rank = num_attention_heads // tp_world_size
+        self.head_dim_per_rank = self.head_dim * self.num_heads_per_rank
+        
+        # Q, K, V projections: split vertically (by head dimension)
+        self.query = ColumnParallelLinear(hidden_size, self.head_dim_per_rank)
+        self.key = ColumnParallelLinear(hidden_size, self.head_dim_per_rank)
+        self.value = ColumnParallelLinear(hidden_size, self.head_dim_per_rank)
+        
+        # Output projection: split horizontally (by head dimension)
+        self.out_proj = RowParallelLinear(self.head_dim_per_rank, hidden_size)
+        
         self.attn_drop = nn.Dropout(dropout_p)
         self.proj_drop = nn.Dropout(dropout_p)
 
     def _shape(self, x: torch.Tensor, bsz: int, seq_len: int) -> torch.Tensor:
-        return x.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
+        return x.view(bsz, seq_len, self.num_heads_per_rank, self.head_dim).transpose(1, 2).contiguous()
 
     def forward(self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        # Fig. 3(b)
         bsz, seq_len, _ = x.size()
-        # x: (batch_size, seqlen, hidden_size)
-        # qkv_proj(x): (batch_size, seqlen, hidden_size) * (hidden_size, 3 * hidden_size) => (batch_size, seqlen, 3 * hidden_size)
-        qkv = self.qkv_proj(x)
-        # 將 tensor 以最後一個 dimension 切成 3 個 tensors，分別是 q, k, v。
-        # qkv (batch_size, seqlen, 3 * hidden_size) => q, k, v (batch_size, seqlen, hidden_size)
-        q, k, v = torch.chunk(qkv, 3, dim=-1)
-        q = self._shape(q, bsz, seq_len)
+        
+        # Step 1: Apply F() to input (identity in forward, all-reduce in backward)
+        x = f(x)
+        
+        # Step 2: Compute Q, K, V for this rank's subset of heads
+        q = self.query(x)  # (batch, seq, head_dim_per_rank)
+        k = self.key(x)    # (batch, seq, head_dim_per_rank)
+        v = self.value(x)  # (batch, seq, head_dim_per_rank)
+        
+        # Step 3: Reshape for multi-head attention
+        q = self._shape(q, bsz, seq_len)  # (batch, num_heads_per_rank, seq, head_dim)
         k = self._shape(k, bsz, seq_len)
         v = self._shape(v, bsz, seq_len)
-        # q: (batch_size, num_heads, seqlen, head_dim)
-        # k_t: (batch_size, num_heads, head_dim, seqlen)
-        # q @ k_t: (batch_size, num_heads, seqlen, seqlen)
+        
+        # Step 4: Compute attention scores
         attn = (q @ k.transpose(-2, -1)) * self.scale
+        
+        # Step 5: Apply attention mask
         if attn_mask is not None:
             attn = attn.masked_fill(attn_mask == 0, -1e4)
-        attn = self.attn_drop(attn.softmax(dim=-1))
-        # context: (batch_size, num_heads, seqlen, head_dim)
-        context = attn @ v
-        # 將 context 從 (batch_size, num_heads, seqlen, head_dim) 轉換回 (batch_size, seqlen, num_heads, head_dim)
-        # 再 reshape 成 (batch_size, seqlen, hidden_size)，其中 hidden_size = num_heads * head_dim。
-        context = context.transpose(1, 2).reshape(bsz, seq_len, self.hidden_size)
+        
+        # Step 6: Apply softmax and dropout
+        attention_weights = torch.softmax(attn, dim=-1)
+        attention_weights = self.attn_drop(attention_weights)
+        
+        # Step 7: Apply attention weights to values
+        context = attention_weights @ v
+        
+        # Step 8: Apply G() after attention computation (all-reduce in forward, identity in backward)
+        context = g(context)
+        
+        # Step 9: Reshape back
+        context = context.transpose(1, 2).contiguous().view(bsz, seq_len, self.head_dim_per_rank)
+        
+        # Step 10: Apply output projection
         out = self.out_proj(context)
         out = self.proj_drop(out)
+        
         return out
 
 # ------------------------
