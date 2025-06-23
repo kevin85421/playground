@@ -121,17 +121,24 @@ class TPAttention(nn.Module):
         return x.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
 
     def forward(self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        # Fig. 3(b)
         bsz, seq_len, _ = x.size()
         qkv = self.qkv_proj(x)
         q, k, v = torch.chunk(qkv, 3, dim=-1)
         q = self._shape(q, bsz, seq_len)
         k = self._shape(k, bsz, seq_len)
         v = self._shape(v, bsz, seq_len)
+        # q: (batch_size, num_heads, seqlen, head_dim)
+        # k_t: (batch_size, num_heads, head_dim, seqlen)
+        # q @ k_t: (batch_size, num_heads, seqlen, seqlen)
         attn = (q @ k.transpose(-2, -1)) * self.scale
         if attn_mask is not None:
             attn = attn.masked_fill(attn_mask == 0, -1e4)
         attn = self.attn_drop(attn.softmax(dim=-1))
+        # context: (batch_size, num_heads, seqlen, head_dim)
         context = attn @ v
+        # 將 context 從 (batch_size, num_heads, seqlen, head_dim) 轉換回 (batch_size, seqlen, num_heads, head_dim)
+        # 再 reshape 成 (batch_size, seqlen, hidden_size)，其中 hidden_size = num_heads * head_dim。
         context = context.transpose(1, 2).reshape(bsz, seq_len, self.hidden_size)
         out = self.out_proj(context)
         out = self.proj_drop(out)
