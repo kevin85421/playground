@@ -21,11 +21,14 @@ def init_distributed(backend: str = "nccl") -> None:
 def initialize_model_parallel(model_parallel_size: int) -> None:
     """Create a tensor‑model‑parallel process group."""
     global _MODEL_PARALLEL_GROUP
+    # 總共有 world_size 個 process，每個 TP group 需要 model_parallel_size 個 process。
+    # Ex: world_size = 8, model_parallel_size = 2 => TP group 1: GPU 0, 2, 4, 6; TP group 2: GPU 1, 3, 5, 7。
     world_size = dist.get_world_size()
     rank = dist.get_rank()
     assert world_size % model_parallel_size == 0, "world_size must be divisible by mp_size"
 
     mp_ranks = [r for r in range(world_size) if r % model_parallel_size == rank % model_parallel_size]
+    # 使用 `dist.new_group` 建立一個新的 process group。
     _MODEL_PARALLEL_GROUP = dist.new_group(ranks=mp_ranks)
 
 def get_mp_group():
@@ -111,10 +114,12 @@ class TPMLP(nn.Module):
         self.fc2 = RowParallelLinear(ffn_hidden_size, hidden_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Y = GeLU(XA)
         x = self.fc1(x)
         x = self.act(x)
-        x = self.fc2(x)
+        # Z = Dropout(YB)
         x = self.dropout(x)
+        x = self.fc2(x)
         return x
 
 # ------------------------
