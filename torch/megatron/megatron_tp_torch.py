@@ -123,7 +123,11 @@ class TPAttention(nn.Module):
     def forward(self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         # Fig. 3(b)
         bsz, seq_len, _ = x.size()
+        # x: (batch_size, seqlen, hidden_size)
+        # qkv_proj(x): (batch_size, seqlen, hidden_size) * (hidden_size, 3 * hidden_size) => (batch_size, seqlen, 3 * hidden_size)
         qkv = self.qkv_proj(x)
+        # 將 tensor 以最後一個 dimension 切成 3 個 tensors，分別是 q, k, v。
+        # qkv (batch_size, seqlen, 3 * hidden_size) => q, k, v (batch_size, seqlen, hidden_size)
         q, k, v = torch.chunk(qkv, 3, dim=-1)
         q = self._shape(q, bsz, seq_len)
         k = self._shape(k, bsz, seq_len)
