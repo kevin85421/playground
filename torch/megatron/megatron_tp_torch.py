@@ -47,25 +47,14 @@ class ColumnParallelLinear(nn.Module):
     """Output‑dim sliced linear layer (Megatron: ColumnParallelLinear)."""
     def __init__(self, input_dim: int, output_dim: int, bias: bool = True, gather_output: bool = False):
         super().__init__()
+        self.gather_output = gather_output
         self.mp_world_size = get_mp_world_size()
         assert output_dim % self.mp_world_size == 0, "output_dim must be divisible by mp_world_size"
-        self.output_dim_per_part = output_dim // self.mp_world_size
-        self.weight = nn.Parameter(torch.empty(self.output_dim_per_part, input_dim))
-        self.bias = nn.Parameter(torch.empty(self.output_dim_per_part)) if bias else None
-        self.gather_output = gather_output
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-        if self.bias is not None:
-            fan_in = self.weight.size(1)
-            bound = 1 / math.sqrt(fan_in)
-            nn.init.uniform_(self.bias, -bound, bound)
+        output_dim_per_part = output_dim // self.mp_world_size
+        self.linear = nn.Linear(input_dim, output_dim_per_part, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        out = torch.matmul(x, self.weight.t())
-        if self.bias is not None:
-            out = out + self.bias
+        out = self.linear(x)
         if self.gather_output:
             out_list = [torch.empty_like(out) for _ in range(self.mp_world_size)]
             dist.all_gather(out_list, out, group=get_mp_group())
@@ -78,25 +67,14 @@ class RowParallelLinear(nn.Module):
         super().__init__()
         self.mp_world_size = get_mp_world_size()
         assert input_dim % self.mp_world_size == 0, "input_dim must be divisible by mp_world_size"
-        self.input_dim_per_part = input_dim // self.mp_world_size
-        self.weight = nn.Parameter(torch.empty(output_dim, self.input_dim_per_part))
-        self.bias = nn.Parameter(torch.empty(output_dim)) if bias else None
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-        if self.bias is not None:
-            fan_in = self.weight.size(1) * get_mp_world_size()
-            bound = 1 / math.sqrt(fan_in)
-            nn.init.uniform_(self.bias, -bound, bound)
+        input_dim_per_part = input_dim // self.mp_world_size
+        self.linear = nn.Linear(input_dim_per_part, output_dim, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         chunks = torch.chunk(x, self.mp_world_size, dim=-1)
         x_part = chunks[get_mp_rank()]
-        out = torch.matmul(x_part, self.weight.t())
+        out = self.linear(x_part)
         dist.all_reduce(out, group=get_mp_group())
-        if self.bias is not None:
-            out = out + self.bias
         return out
 
 # ------------------------
