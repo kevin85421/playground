@@ -48,3 +48,16 @@ python3 asyncq.py -p 2 -c 5
   * 把一個 coroutine 變成 Task 並送去 event loop 執行，並且可以之後再 `await`。
   * `gather` 則是會同時啟動多個 tasks，並且立刻開始等。
 * `task.cancel()` 取消 task
+
+## 常見錯誤：在 async function 中使用 blocking code
+
+```bash
+python3 blocking_async.py
+# Start
+# End
+# Start
+# End
+# Time taken: 6.006925582885742 seconds
+```
+
+* 在其中使用 `time.sleep(3)` 會導致 event loop 卡住無法運行其他 coroutine。
