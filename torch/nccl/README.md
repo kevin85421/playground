@@ -14,4 +14,9 @@ Rank 0 waiting to receive...
 Rank 1 destroying process group without sending.
 Rank 0 destroying process group from thread after 45s.
 # hang...
+
+
+# 刪除 process
+ps aux | grep spawn
+kill $PID
 ```
