@@ -91,7 +91,7 @@ python3 access_attr.py
 * `__getattribute__` 會直接存取屬性，不會去呼叫 `__getattr__`。
 * `__getattr__` 只有在 `__getattribute__` 找不到屬性時，才會被呼叫。
 
-# Python dump heap
+## Python dump heap
 
 * https://blog.jjyao.me/blog/2024/09/13/python-heap-dump/
 * https://github.com/zhuyifei1999/guppy3?tab=readme-ov-file
@@ -121,3 +121,25 @@ Partition of a set of 51514 objects. Total size = 6100043 bytes.
      9    106   0   113008   2   5187499  85 set
 <183 more rows. Type e.g. '_.more' to view.>
 ```
+
+## `@abstractmethod` / `@staticmethod` 的順序
+
+```bash
+python3 annotation_order.py
+# Traceback (most recent call last):
+#   File "/home/ubuntu/playground/python/annotation_order.py", line 15, in <module>
+#     impl = Impl()
+# TypeError: Can't instantiate abstract class Impl with abstract method get_communicator_metadata
+```
+* 因為 `class Impl(Base)` 沒有實作 `get_communicator_metadata`，因此會報錯。
+* 為何先執行 `@abstractmethod` 再執行 `@staticmethod`？
+  ```python
+  class Base(ABC):
+
+      @staticmethod
+      @abstractmethod
+      def get_communicator_metadata():
+          pass
+  ```
+  * 會先執行 `@abstractmethod` 再執行 `@staticmethod`。
+  * 如果交換順序後，由於 `@staticmethod` 設定後 `__isabstractmethod__` 變成不可 writable，[@abstractmethod](https://github.com/python/cpython/blob/8e3244d39b8cd3d7cef5a315247d45e801b35869/Lib/abc.py#L24) 會設定 `__isabstractmethod__`，因此會報錯。
