@@ -26,3 +26,15 @@ python3 jax_immutable.py
   # 使用 x.at[0].set(10) 回傳一個 updated copy
   y = x.at[0].set(10)
   ```
+
+## JAX array
+
+```sh
+python3 jax_array.py
+
+# [Example output]:
+# JAX array: [0 1 2 3 4]
+# Devices: {CpuDevice(id=0)}
+# Sharding: SingleDeviceSharding(device=CpuDevice(id=0), memory_kind=device)
+```
+* 一個 JAX array 可以被分成多個 shards 放在多個 devices，此例子為一個只在單一 CPU 上的 JAX array。
