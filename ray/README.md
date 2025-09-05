@@ -60,5 +60,55 @@ ray list tasks
 #  0  16310a0f0a45af5cffffffffffffffffffffffff01000000                 1  sleep                          RUNNING   01000000              NORMAL_TASK  sleep                          ffffffffffffffffffffffffffffffffffffffff01000000  1d4e75537ec3484e20222dd4ed68e3160e3429df9fd9a713fa1418e5  662657a759ef0caa9ee0359e59288ee7427237ecbec9942f9c2c5762         85184
 #  1  16310a0f0a45af5cffffffffffffffffffffffff01000000                 0  sleep                          FAILED    01000000              NORMAL_TASK  sleep                          ffffffffffffffffffffffffffffffffffffffff01000000  03dcce5b881f347f2501a0b064d018dd84f4fe656d31535ee296eee6  0f5288126e9974bbfa8c716ba44ed6f9326f754f1db2760cec7bd0ce         84491  NODE_DIED
 #  2  c8ef45ccd0112571ffffffffffffffffffffffff01000000                 0  bundle_reservation_check_func  FINISHED  01000000              NORMAL_TASK  bundle_reservation_check_func  ffffffffffffffffffffffffffffffffffffffff01000000  03dcce5b881f347f2501a0b064d018dd84f4fe656d31535ee296eee6  0f5288126e9974bbfa8c716ba44ed6f9326f754f1db2760cec7bd0ce         84491
-
 ```
+
+# Ray PG/task fate-sharing
+
+```sh
+ray start --head --num-cpus=0
+ray start --address=127.0.0.1:6379
+
+# https://gist.github.com/kevin85421/f419b67aa9180ffc62d43c77495c55ad
+# schedule a PG on the worker node, and then schedule a long running task to the PG.
+python3 pg_task_fate_share.py
+
+# Get PID of the worker's Raylet
+ps aux | grep "raylet.1"
+kill $WORKER_RAYLET_PID
+
+# Wait until `pg_task_fate_share.py` to call `remove_placement_group(pg)` to remove the PG.
+
+# List tasks
+ray list tasks
+
+# ======== List: 2025-09-05 21:18:54.287100 ========
+# ------------------------------
+# Total: 3
+
+# Table:
+# ------------------------------
+#     TASK_ID                                             ATTEMPT_NUMBER  NAME                           STATE       JOB_ID  ACTOR_ID    TYPE         FUNC_OR_CLASS_NAME             PARENT_TASK_ID                                    NODE_ID                                                   WORKER_ID                                                   WORKER_PID  ERROR_TYPE
+#  0  16310a0f0a45af5cffffffffffffffffffffffff01000000                 1  sleep                          FAILED    01000000              NORMAL_TASK  sleep                          ffffffffffffffffffffffffffffffffffffffff01000000                                                                                                                                    LOCAL_RAYLET_DIED
+#  1  16310a0f0a45af5cffffffffffffffffffffffff01000000                 0  sleep                          FAILED    01000000              NORMAL_TASK  sleep                          ffffffffffffffffffffffffffffffffffffffff01000000  d09f7d22af08b2f7ad4602a86f30dcdd85316b62b155d3e877e029cf  cfb1b56607b929987cf0c685466eae7f190ab110ea978bf90304efc2         97533  NODE_DIED
+#  2  c8ef45ccd0112571ffffffffffffffffffffffff01000000                 0  bundle_reservation_check_func  FINISHED  01000000              NORMAL_TASK  bundle_reservation_check_func  ffffffffffffffffffffffffffffffffffffffff01000000  d09f7d22af08b2f7ad4602a86f30dcdd85316b62b155d3e877e029cf  cfb1b56607b929987cf0c685466eae7f190ab110ea978bf90304efc2         97533
+
+# start a new worker node
+ray start --address=127.0.0.1:6379
+
+# List tasks
+ray list tasks
+
+# ======== List: 2025-09-05 21:19:13.440439 ========
+# Stats:
+# ------------------------------
+# Total: 3
+
+# Table:
+# ------------------------------
+#     TASK_ID                                             ATTEMPT_NUMBER  NAME                           STATE       JOB_ID  ACTOR_ID    TYPE         FUNC_OR_CLASS_NAME             PARENT_TASK_ID                                    NODE_ID                                                   WORKER_ID                                                   WORKER_PID  ERROR_TYPE
+#  0  16310a0f0a45af5cffffffffffffffffffffffff01000000                 1  sleep                          FAILED    01000000              NORMAL_TASK  sleep                          ffffffffffffffffffffffffffffffffffffffff01000000                                                                                                                                    LOCAL_RAYLET_DIED
+#  1  16310a0f0a45af5cffffffffffffffffffffffff01000000                 0  sleep                          FAILED    01000000              NORMAL_TASK  sleep                          ffffffffffffffffffffffffffffffffffffffff01000000  d09f7d22af08b2f7ad4602a86f30dcdd85316b62b155d3e877e029cf  cfb1b56607b929987cf0c685466eae7f190ab110ea978bf90304efc2         97533  NODE_DIED
+#  2  c8ef45ccd0112571ffffffffffffffffffffffff01000000                 0  bundle_reservation_check_func  FINISHED  01000000              NORMAL_TASK  bundle_reservation_check_func  ffffffffffffffffffffffffffffffffffffffff01000000  d09f7d22af08b2f7ad4602a86f30dcdd85316b62b155d3e877e029cf  cfb1b56607b929987cf0c685466eae7f190ab110ea978bf90304efc2         97533
+```
+
+* 如果呼叫 `remove_placement_group(pg)` 把 PG 移除，PG 裡面的 tasks 會和 PG fate-sharing 因此也變成 `FAILED`。
