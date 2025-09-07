@@ -143,3 +143,18 @@ python3 annotation_order.py
   ```
   * 會先執行 `@abstractmethod` 再執行 `@staticmethod`。
   * 如果交換順序後，由於 `@staticmethod` 設定後 `__isabstractmethod__` 變成不可 writable，[@abstractmethod](https://github.com/python/cpython/blob/8e3244d39b8cd3d7cef5a315247d45e801b35869/Lib/abc.py#L24) 會設定 `__isabstractmethod__`，因此會報錯。
+
+## `attrs.define`
+
+* 類似 dataclass，自動產生 `__init__`、`__repr__`、`__eq__` 等方法
+* 使用 `@attrs.define` 裝飾器可以讓類別自動獲得這些常用方法
+* `attrs` 比 `dataclass` 支持更多功能 ([ref](https://www.revsys.com/tidbits/dataclasses-and-attrs-when-and-why/))
+
+```bash
+python3 attrs_define.py
+# [Example output]:
+# Print a `Person` instance which is annotated by `attrs.define`
+# Person(name='Alice', age=30, email='alice@example.com')
+# Print a `Person2` instance which is not annotated by `attrs.define`
+# <__main__.Person2 object at 0x102b6fca0>
+```
