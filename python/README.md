@@ -177,3 +177,21 @@ python3 hashable.py
 * `Person2`：實作 `__hash__` 但沒有 `__eq__`。
 * `Person3`：實作 `__hash__` 和 `__eq__`。
 
+## `set.update(...)` 不會改變其中 instances 如果該 member 已存在
+
+```python
+# python3 hashable.py
+alice1 = Person3("Alice", 20)
+id1 = id(alice1)
+alice2 = Person3("Alice", 20)
+id2 = id(alice2)
+s = set([alice1])
+assert alice2 in s
+s.update([alice2])
+
+l = list(s)
+assert len(l) == 1
+assert l[0] is alice1
+assert l[0] is not alice2
+```
+

@@ -27,3 +27,17 @@ class Person3:
 
 d3 = {Person3("Alice", 20): "value"}
 print("Person3('Alice', 20) in d3: ", Person3("Alice", 20) in d3) # True
+
+# 驗證 set update() 不會改變原本 set 中的 instance。
+alice1 = Person3("Alice", 20)
+id1 = id(alice1)
+alice2 = Person3("Alice", 20)
+id2 = id(alice2)
+s = set([alice1])
+assert alice2 in s
+s.update([alice2])
+
+l = list(s)
+assert len(l) == 1
+assert l[0] is alice1
+assert l[0] is not alice2
