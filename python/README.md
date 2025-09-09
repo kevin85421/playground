@@ -158,3 +158,22 @@ python3 attrs_define.py
 # Print a `Person2` instance which is not annotated by `attrs.define`
 # <__main__.Person2 object at 0x102b6fca0>
 ```
+
+## `hashable`
+
+* https://docs.python.org/3/glossary.html#term-hashable
+* 定義：An object is `hashable` if it has a hash value which never changes during its lifetime (it needs a `__hash__()` method), and can be compared to other objects (it needs an `__eq__()` method). Hashable objects which compare equal must have the same hash value.
+  * 一個 `hashable` object 可以作為 dict 的 key 或者 set 的 member。
+  * 多數 Python immutable built-in objects 為 hashable。如果是用戶定義的 class instances 預設也是 hashable，會透過比較 `id()`。
+
+```bash
+python3 hashable.py
+# [Example output]
+# Person('Alice', 20) in d:  False
+# Person2('Alice', 20) in d2:  False
+# Person3('Alice', 20) in d3:  True
+```
+* `Person`：`__hash__` 和 `__eq__` 都沒有實作。
+* `Person2`：實作 `__hash__` 但沒有 `__eq__`。
+* `Person3`：實作 `__hash__` 和 `__eq__`。
+
