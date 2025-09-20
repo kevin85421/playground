@@ -207,3 +207,4 @@ python3 os_direct_example.py
 * [O_DIRECT](https://man7.org/linux/man-pages/man2/open.2.html)：
   * 使用 `O_DIRECT` 開啟時，會直接與儲存設備交互，繞過 Linux 內核的頁面 cache。
   * 通常會降低性能，但在特別情況可能有用。
+  * Linus 強烈反對 `O_DIRECT`：https://lkml.org/lkml/2007/1/10/233
