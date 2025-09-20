@@ -195,3 +195,15 @@ assert l[0] is alice1
 assert l[0] is not alice2
 ```
 
+## `os.O_DIRECT`
+
+```bash
+python3 os_direct_example.py
+# [Example output]
+# Logical block size: 4096
+# Read 8192 bytes: b'Hello, World!Hello, '
+```
+* 只能在 Linux 上運行，Mac 上好像沒有 `O_DIRECT`。
+* [O_DIRECT](https://man7.org/linux/man-pages/man2/open.2.html)：
+  * 使用 `O_DIRECT` 開啟時，會直接與儲存設備交互，繞過 Linux 內核的頁面 cache。
+  * 通常會降低性能，但在特別情況可能有用。
