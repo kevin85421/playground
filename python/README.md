@@ -208,3 +208,13 @@ python3 os_direct_example.py
   * 使用 `O_DIRECT` 開啟時，會直接與儲存設備交互，繞過 Linux 內核的頁面 cache。
   * 通常會降低性能，但在特別情況可能有用。
   * Linus 強烈反對 `O_DIRECT`：https://lkml.org/lkml/2007/1/10/233
+  
+* 記得閱讀 [open(2)](https://man7.org/linux/man-pages/man2/open.2.html) 下方 "The O_DIRECT flag may impose alignment restrictions on the length" 的說明。
+  * "Likewise, applications should avoid mixing mmap(2) of files with direct I/O to the same files."
+    * 此 example 不是使用 `mmap` 來將 file 映射到 memory，而是使用 `mmap` 建立 buffer 來符合 alignment 需求。
+  * "In summary, `O_DIRECT` is a potentially powerful tool that should be used with caution.  It is recommended that applications treat use of O_DIRECT as a performance option which is disabled by default."
+
+* 將 `buffer_size = block_size * 2  # 例如 8192 位元組` 改成 `buffer_size = block_size * 2 + 1`。沒符合 alignment，因此丟出 `EINVAL`。
+  ```
+  [Errno 22] Invalid argument
+  ```
