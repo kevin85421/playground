@@ -218,3 +218,18 @@ python3 os_direct_example.py
   ```
   [Errno 22] Invalid argument
   ```
+
+# `try ... except ... else`
+
+```bash
+python3 try_except_else.py
+
+# [expected output]
+# Case 1: No exception raised in `try`
+# try
+# else
+# Case 2: Exception raised in `try`
+# except
+```
+
+* `else` 只有在 `try` 之中沒有丟出 exception 時被執行。
