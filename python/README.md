@@ -233,3 +233,72 @@ python3 try_except_else.py
 ```
 
 * `else` 只有在 `try` 之中沒有丟出 exception 時被執行。
+
+## Process Group
+
+* Experiment 1: 沒設定 process group，然後使用 `os.kill` 發送 SIGKILL 給 leader process
+  ```sh
+  uv run process_group.py --sleep-before-kill 5 --no-use-process-group --no-use-kill-pg
+
+  # [example output]:
+  #
+  # [monitor] args: Namespace(sleep_before_kill=5.0, use_process_group=False, use_kill_pg=False)
+  # [monitor] starting leader in a NEW SESSION/PROCESS GROUP... (sleep_before_kill: 5.0, use_process_group: False)
+  # [monitor] leader pid=41906
+  # [monitor] sleeping for 5.0 seconds to wait for the child process to start...
+  # [leader] pid=41906 pgid=41904
+  # [child] pid=41907 ppid=41906 pgid=41904
+  # [monitor] sending SIGKILL to leader only...
+  # [monitor] done.
+
+  # 檢查 child process，發現 child process 仍存在
+  ps aux | grep 41907
+  # kai-hsun         41907   0.0  0.0 411022896  11872 s024  S     4:30PM   0:00.01 ...
+  kill 41907
+  # [child] got signal 15, exiting...
+  ```
+  * 先啟動一個 leader / child process，其中 leader 是 child 的 parent process，但沒設定 process group。
+  * 發送 SIGKILL 給 leader `os.kill(leader.pid, signal.SIGKILL)`。
+
+* Experiment 2: 設定 process group，然後使用 `os.kill` 發送 SIGKILL 給 leader process
+  ```sh
+  uv run process_group.py --sleep-before-kill 5 --use-process-group --no-use-kill-pg
+
+  # [example output]
+  #
+  # [monitor] args: Namespace(sleep_before_kill=5.0, use_process_group=True, use_kill_pg=False)
+  # [monitor] starting leader in a NEW SESSION/PROCESS GROUP... (sleep_before_kill: 5.0, use_process_group: True)
+  # [monitor] leader pid=66024
+  # [monitor] sleeping for 5.0 seconds to wait for the child process to start...
+  # [leader] pid=66024 pgid=66024
+  # [child] pid=66035 ppid=66024 pgid=66024
+  # [monitor] sending SIGKILL to leader only...
+  # [monitor] done.
+
+  ps aux | grep 66035
+  # kai-hsun         66035   0.0  0.0 411034160  12096   ??  S     4:33PM   0:00.01 ...
+
+  kill 66035
+  # [child] got signal 15, exiting...
+  ```
+
+* Experiment 3: 設定 process group，然後使用 `os.killpg` 發送 SIGKILL 給 process group
+  ```sh
+  uv run process_group.py --sleep-before-kill 5 --use-process-group --use-kill-pg
+
+  # [example output]
+  #
+  # [monitor] args: Namespace(sleep_before_kill=5.0, use_process_group=True, use_kill_pg=True)
+  # [monitor] starting leader in a NEW SESSION/PROCESS GROUP... (sleep_before_kill: 5.0, use_process_group: True)
+  # [monitor] leader pid=82754
+  # [monitor] sleeping for 5.0 seconds to wait for the child process to start...
+  # [leader] pid=82754 pgid=82754
+  # [child] pid=82755 ppid=82754 pgid=82754
+  # [monitor] cleaning up its process group...
+  # [monitor] sending SIGTERM to process group 82754...
+  # [child] got signal 15, exiting...
+  # [monitor] done.
+
+  ps aux | grep 82755
+  # => note that the signal handler of child has already been executed "[child] got signal 15, exiting...".
+  ```
