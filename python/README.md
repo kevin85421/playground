@@ -219,7 +219,7 @@ python3 os_direct_example.py
   [Errno 22] Invalid argument
   ```
 
-# `try ... except ... else`
+## `try ... except ... else`
 
 ```bash
 python3 try_except_else.py
