@@ -61,3 +61,12 @@ python3 blocking_async.py
 ```
 
 * 在其中使用 `time.sleep(3)` 會導致 event loop 卡住無法運行其他 coroutine。
+
+## `asyncio.wait_for(coro, timeout)` 設定 timeout
+
+```bash
+python3 async_wait_for.py
+```
+
+* https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for
+* `timeout` 到的話 cancel tasks，並且丟出 `TimeoutError` (Python 3.11)。`asyncio_wait_for` 會等到所有 future 都被 cancel，因此等待的時間可能會超過 `timeout`。
