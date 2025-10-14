@@ -302,3 +302,15 @@ python3 try_except_else.py
   ps aux | grep 82755
   # => note that the signal handler of child has already been executed "[child] got signal 15, exiting...".
   ```
+
+## `subprocess.Popen.poll()`
+
+```bash
+python3 subprocess_poll.py
+# [Example output]
+# Process is still running... Mon Oct 14 09:06:15 2025
+# Process is still running... Mon Oct 14 09:06:16 2025
+# Process is still running... Mon Oct 14 09:06:17 2025
+```
+* https://docs.python.org/3/library/subprocess.html#subprocess.Popen.poll
+* 如果 process 還在運行，`poll()` 回傳 `None`。
