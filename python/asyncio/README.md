@@ -80,3 +80,18 @@ python3 benchmark_event_loop_overhead.py
 # Average event loop closing overhead: 0.0034 ms
 ```
 * 測試：`loop = asyncio.new_event_loop()` 和 `loop.close()` 的 overhead。
+
+## `__aenter__` and `__aexit__`
+
+```bash
+python3 async_context.py
+# [Example Output]
+# This should be printed before the __aenter__
+# __aenter__: Setting up resource1
+# Using resource1 => This should be printed after __aenter__ and before __aexit__
+# __aexit__: Cleaning up resource1
+# This should be printed after the __aexit__
+```
+
+* `async with` 會自動呼叫 `__aenter__` 和 `__aexit__`。
+* Ref: https://docs.python.org/3/reference/datamodel.html#asynchronous-context-managers
