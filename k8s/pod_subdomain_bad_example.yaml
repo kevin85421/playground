@@ -1,0 +1,45 @@
+---
+# ❌ 錯誤示例 1: subdomain 與 Service 名稱不匹配
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: default
+spec:
+  clusterIP: None
+  selector:
+    app: my-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-1
+  namespace: default
+  labels:
+    app: my-app
+spec:
+  hostname: web-1
+  subdomain: wrong-service-name  # ❌ 錯誤：與 Service 名稱不一致
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 8080
+---
+# 測試 Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-bad-pod
+  namespace: default
+spec:
+  containers:
+  - name: busybox
+    image: busybox:latest
+    command: ["sleep", "3600"]
+

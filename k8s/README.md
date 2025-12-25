@@ -25,3 +25,21 @@ ping web-2.my-service.default.svc.cluster.local
 # [Example output]:
 # 64 bytes from 10.42.0.16: seq=70 ttl=64 time=0.108 ms
 ```
+
+## Example: `pod.spec.subdomain` 和 headless service 不一致
+
+* [pod_subdomain_bad_example.yaml](./pod_subdomain_bad_example.yaml) 中 headless service 的名稱是 `my-service`，但是 Pod 的 `subdomain` 是 `wrong-service-name`。
+
+```bash
+kubectl apply -f pod_subdomain_bad_example.yaml
+
+kubectl exec -it test-bad-pod -- sh
+
+ping web-1.wrong-service-name.default.svc.cluster.local
+# [Example output]:
+# ping: bad address 'web-1.wrong-service-name.default.svc.cluster.local'
+
+ping web-1.my-service.default.svc.cluster.local
+# [Example output]:
+# ping: bad address 'web-1.my-service.default.svc.cluster.local'
+```
