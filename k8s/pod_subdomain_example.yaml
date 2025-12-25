@@ -1,0 +1,78 @@
+---
+# 首先創建一個 Headless Service (ClusterIP: None)
+# 這是使用 subdomain 功能的前提條件
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: default
+spec:
+  clusterIP: None  # Headless Service
+  selector:
+    app: my-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+
+---
+# Pod 1: 使用 hostname 和 subdomain
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-1
+  namespace: default
+  labels:
+    app: my-app
+spec:
+  hostname: web-1  # 設定 Pod 的 hostname
+  subdomain: my-service  # 必須與 Service 名稱相同
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 8080
+    command: ["/bin/sh"]
+    args:
+    - -c
+    - |
+      echo "Hello from web-1" > /usr/share/nginx/html/index.html
+      nginx -g 'daemon off;'
+
+---
+# Pod 2: 另一個使用相同 subdomain 的 Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-2
+  namespace: default
+  labels:
+    app: my-app
+spec:
+  hostname: web-2  # 不同的 hostname
+  subdomain: my-service  # 相同的 subdomain
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 8080
+    command: ["/bin/sh"]
+    args:
+    - -c
+    - |
+      echo "Hello from web-2" > /usr/share/nginx/html/index.html
+      nginx -g 'daemon off;'
+
+---
+# 測試用的 Pod (用來驗證 DNS 解析)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: default
+spec:
+  containers:
+  - name: busybox
+    image: busybox:latest
+    command: ["sleep", "3600"]
+
