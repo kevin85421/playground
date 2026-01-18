@@ -50,3 +50,19 @@
       * 相比於 float32 使用更少記憶體。
       * 但是在小數字時會 underflow (如上述的 `1e-8`)，會造成 training 時不穩定。
 
+* bfloat16 tensor: sign (1 bit) + exponent (8 bits) + fraction (7 bits)
+    ```python
+    >>> import torch
+    >>> x = torch.tensor([1e-8], dtype=torch.bfloat16)
+    >>> x
+    tensor([1.0012e-08], dtype=torch.bfloat16)
+    >>> torch.finfo(torch.float32)
+    finfo(resolution=1e-06, min=-3.40282e+38, max=3.40282e+38, eps=1.19209e-07, smallest_normal=1.17549e-38, tiny=1.17549e-38, dtype=float32)
+    >>> torch.finfo(torch.float16)
+    finfo(resolution=0.001, min=-65504, max=65504, eps=0.000976562, smallest_normal=6.10352e-05, tiny=6.10352e-05, dtype=float16)
+    >>> torch.finfo(torch.bfloat16)
+    finfo(resolution=0.01, min=-3.38953e+38, max=3.38953e+38, eps=0.0078125, smallest_normal=1.17549e-38, tiny=1.17549e-38, dtype=bfloat16)
+    ```
+    * Google Brain 開發 bfloat16 (Brain Floating Point)，使用和 fp16 相同的 memory，但是 dynamic range 和 fp32 相同，犧牲一些 resolution，但是在 deep learning 中可接受。
+    * 比較
+        * 相比於 fp16，`torch.tensor([1e-8], dtype=torch.bfloat16)` 並沒有造成 underflow。
