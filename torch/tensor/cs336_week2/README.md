@@ -125,3 +125,36 @@
         ```
         * 如果要跳轉到下一個 row 需要移動 `stride(0)` (4) 個元素，如果要跳轉到下一個 column 需要移動 `stride(1)` (1) 個元素。
         * 因此假設如果要存取 `x[1][2]`，需要移動 `1 * stride(0) + 2 * stride(1)` 個元素。
+
+* Tensor slicing (`view()`)
+    ```sh
+    python3 tensor_slicing.py
+    ```
+    * 很多 operations 只是提供對於 tensor 的不同 "view"，不會真的去 copy，因此對於一個 tensor 的 mutation 會影響到另一個 tensor。
+      * Example 1:
+        ```python
+        x = torch.tensor([[1., 2, 3], [4, 5, 6]])
+        y = x[0]
+        assert torch.equal(y, torch.tensor([1., 2, 3]))
+        assert x.untyped_storage().data_ptr() == y.untyped_storage().data_ptr()
+        ```
+      * Example 2:
+        ```python
+        x = torch.tensor([[1., 2, 3], [4, 5, 6]])
+        y = x.transpose(1, 0)
+        assert torch.equal(y, torch.tensor([[1, 4], [2, 5], [3, 6]]))
+        assert x.untyped_storage().data_ptr() == y.untyped_storage().data_ptr()
+        ```
+    * 注意：有些 view 是 non-contiguous (底層記憶體不連續)，表示無法再進行進一步的 view。
+      * Example:
+        ```python
+        x = torch.tensor([[1., 2, 3], [4, 5, 6]])  # @inspect x
+        y = x.transpose(1, 0)
+        assert not y.is_contiguous()
+        y.view(2, 3) # => 報錯
+        ```
+      * 解決方法：使用 `contiguous()` 把 tensor 變成連續的。
+        ```python
+        y = x.transpose(1, 0).contiguous().view(2, 3)  # @inspect y
+        assert x.untyped_storage().data_ptr() != y.untyped_storage().data_ptr()
+        ```
