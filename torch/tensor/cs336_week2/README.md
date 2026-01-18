@@ -140,6 +140,7 @@
         ```
       * Example 2:
         ```python
+        # 記憶體為：[1., 2, 3, 4, 5, 6]
         x = torch.tensor([[1., 2, 3], [4, 5, 6]])
         y = x.transpose(1, 0)
         assert torch.equal(y, torch.tensor([[1, 4], [2, 5], [3, 6]]))
