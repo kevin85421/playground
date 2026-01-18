@@ -101,3 +101,27 @@
     8192
     ```
     * tensor 預設在 CPU 上，使用 `x.to("cuda:0")` 把 tensor 傳送到 GPU 上。
+
+## Tensor operations
+
+* Tensor storage (`tensor.stride()` example)
+    ```sh
+    python3 tensor_storage.py
+    # row 1, col 2, index 6, value 6, stride (4, 1)
+    ```
+    * PyTorch tensors are `pointers` into allocated memory with metadata (例如：`stride`) describing how to get to any element of the tensor.
+    * 對於多維 tensor，底層仍是連續記憶體，Example：
+        ```python
+        x = torch.tensor([
+            [0, 1, 2, 3],
+            [4, 5, 6, 7],
+            [8, 9, 10, 11],
+            [12, 13, 14, 15],
+            [16, 17, 18, 19],
+            [20, 21, 22, 23],
+            [24, 25, 26, 27],
+            [28, 29, 30, 31],
+        ])
+        ```
+        * 如果要跳轉到下一個 row 需要移動 `stride(0)` (4) 個元素，如果要跳轉到下一個 column 需要移動 `stride(1)` (1) 個元素。
+        * 因此假設如果要存取 `x[1][2]`，需要移動 `1 * stride(0) + 2 * stride(1)` 個元素。
