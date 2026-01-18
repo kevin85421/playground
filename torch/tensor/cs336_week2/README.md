@@ -66,3 +66,12 @@
     * Google Brain 開發 bfloat16 (Brain Floating Point)，使用和 fp16 相同的 memory，但是 dynamic range 和 fp32 相同，犧牲一些 resolution，但是在 deep learning 中可接受。
     * 比較
         * 相比於 fp16，`torch.tensor([1e-8], dtype=torch.bfloat16)` 並沒有造成 underflow。
+
+* fp8
+    * https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html
+    * H100s support two variants of FP8: E4M3 (range [-448, 448]) and E5M2 ([-57344, 57344]).
+
+* Implications on training:
+  * 在 training 時，使用 float32 可以正常訓練，但是需要大量記憶體。
+  * 使用 fp8、float16 和 bfloat16 訓練時，可能會造成不穩定。
+  * 解決方案：使用 `mixed precision training`。
