@@ -159,3 +159,30 @@
         y = x.transpose(1, 0).contiguous().view(2, 3)  # @inspect y
         assert x.untyped_storage().data_ptr() != y.untyped_storage().data_ptr()
         ```
+
+* Tensor elementwise
+```python
+    >>> import torch
+    >>> x = torch.tensor([1, 4, 9])
+    >>> x
+    tensor([1, 4, 9])
+    >>> x.pow(2)
+    tensor([ 1, 16, 81])
+    >>> x.sqrt()
+    tensor([1., 2., 3.])
+    >>> x.rsqrt()
+    tensor([1.0000, 0.5000, 0.3333])
+    >>> x + x
+    tensor([ 2,  8, 18])
+    >>> x * 2
+    tensor([ 2,  8, 18])
+    >>> x / 0.5
+    tensor([ 2.,  8., 18.])
+    >>> x = torch.ones(3, 3).triu()
+    >>> x
+    tensor([[1., 1., 1.],
+            [0., 1., 1.],
+            [0., 0., 1.]])
+    ```
+    * `triu()` Returns the upper triangular part of a matrix (2-D tensor) or batch of matrices input, the other elements of the result tensor out are set to 0.
+      * https://docs.pytorch.org/docs/stable/generated/torch.triu.html
