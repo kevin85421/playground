@@ -2,6 +2,7 @@
 
 * https://stanford-cs336.github.io/spring2025-lectures/?trace=var/traces/lecture_02.json
 
+# Memory accounting
 
 ## Tensor memory
 
@@ -75,3 +76,28 @@
   * 在 training 時，使用 float32 可以正常訓練，但是需要大量記憶體。
   * 使用 fp8、float16 和 bfloat16 訓練時，可能會造成不穩定。
   * 解決方案：使用 `mixed precision training`。
+
+# Compute accounting
+
+## Tensor on GPUs
+
+* 把 tensor 傳送到 GPU 上
+    ```python
+    >>> import torch
+    >>> x = torch.zeros(32, 32)
+    >>> x.device
+    device(type='cpu')
+    >>> memory_allocated = torch.cuda.memory_allocated()
+    >>> memory_allocated
+    0
+    >>> y = x.to("cuda:0")
+    >>> y.device
+    device(type='cuda', index=0)
+    >>> z = torch.zeros(32, 32, device="cuda:0")
+    >>> new_memory_allocated = torch.cuda.memory_allocated()
+    >>> new_memory_allocated - memory_allocated
+    8192
+    >>> y.numel() * y.element_size() + z.numel() * z.element_size()
+    8192
+    ```
+    * tensor 預設在 CPU 上，使用 `x.to("cuda:0")` 把 tensor 傳送到 GPU 上。
