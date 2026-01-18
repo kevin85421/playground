@@ -161,7 +161,7 @@
         ```
 
 * Tensor elementwise
-```python
+    ```python
     >>> import torch
     >>> x = torch.tensor([1, 4, 9])
     >>> x
