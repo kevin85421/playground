@@ -262,3 +262,25 @@
           [4., 4., 4.],
           [4., 4., 4.]]])
   ```
+
+* `einops_reduce`
+  * Example: 對 `seq` 做 mean
+    ```python
+    >>> import torch
+    >>> from einops import reduce
+    >>> x = torch.arange(24).reshape(2, 3, 4)  # batch=2, seq=3, hidden=4
+    >>> x
+    tensor([[[ 0,  1,  2,  3],
+            [ 4,  5,  6,  7],
+            [ 8,  9, 10, 11]],
+
+            [[12, 13, 14, 15],
+            [16, 17, 18, 19],
+            [20, 21, 22, 23]]])
+    >>> reduce(x, "batch seq hidden -> batch hidden", "sum")
+    tensor([[12, 15, 18, 21],
+            [48, 51, 54, 57]])
+    ```
+    * `"batch seq hidden -> batch hidden"` => 要把 `seq` 壓縮掉，因此把 `batch` / `hidden` 相同的 3 個 elements 加起來。
+      * 12 = x[0][0][0] + x[0][1][0] + x[0][2][0] = 0 + 4 + 8 = 12
+      * 15 = x[0][0][1] + x[0][1][1] + x[0][2][1] = 1 + 5 + 9 = 15
