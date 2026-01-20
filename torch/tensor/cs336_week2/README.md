@@ -237,31 +237,31 @@
             [139, 154]])
     ```
 
-* Example 2: 注意 `torch.einsum` 只接受單一 character 作為 dimension，不支持像是 `batch` 這種 multi-character 的 dimension。
-  ```python
-  >>> import torch
-  >>> x = torch.ones(2, 3, 4)
-  >>> y = torch.ones(2, 3, 4)
-  >>> torch.einsum("bsh,bth->bst", x, y)
-  tensor([[[4., 4., 4.],
-          [4., 4., 4.],
-          [4., 4., 4.]],
+  * Example 2: 注意 `torch.einsum` 只接受單一 character 作為 dimension，不支持像是 `batch` 這種 multi-character 的 dimension。
+    ```python
+    >>> import torch
+    >>> x = torch.ones(2, 3, 4)
+    >>> y = torch.ones(2, 3, 4)
+    >>> torch.einsum("bsh,bth->bst", x, y)
+    tensor([[[4., 4., 4.],
+            [4., 4., 4.],
+            [4., 4., 4.]],
 
-          [[4., 4., 4.],
-          [4., 4., 4.],
-          [4., 4., 4.]]])
+            [[4., 4., 4.],
+            [4., 4., 4.],
+            [4., 4., 4.]]])
 
-  >>> from einops import einsum
-  >>> z = einsum(x, y, "batch seq1 hidden, batch seq2 hidden -> batch seq1 seq2")
-  >>> z
-  tensor([[[4., 4., 4.],
-          [4., 4., 4.],
-          [4., 4., 4.]],
+    >>> from einops import einsum
+    >>> z = einsum(x, y, "batch seq1 hidden, batch seq2 hidden -> batch seq1 seq2")
+    >>> z
+    tensor([[[4., 4., 4.],
+            [4., 4., 4.],
+            [4., 4., 4.]],
 
-          [[4., 4., 4.],
-          [4., 4., 4.],
-          [4., 4., 4.]]])
-  ```
+            [[4., 4., 4.],
+            [4., 4., 4.],
+            [4., 4., 4.]]])
+    ```
 
 * `einops_reduce`
   * Example: 對 `seq` 做 mean
