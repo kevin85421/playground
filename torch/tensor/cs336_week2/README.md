@@ -186,3 +186,79 @@
     ```
     * `triu()` Returns the upper triangular part of a matrix (2-D tensor) or batch of matrices input, the other elements of the result tensor out are set to 0.
       * https://docs.pytorch.org/docs/stable/generated/torch.triu.html
+
+## Einops
+
+* Motivation:
+  ```
+  >>> x = torch.ones(2, 3, 4)
+  >>> x.transpose(1, 2)
+  tensor([[[1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.]],
+
+          [[1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.]]])
+  >>> x.transpose(-2, -1)
+  tensor([[[1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.]],
+
+          [[1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.],
+          [1., 1., 1.]]])
+  ```
+  * [torch.transpose](https://docs.pytorch.org/docs/stable/generated/torch.transpose.html)
+    * `transpose(dim0, dim1)` 把第 `dim0` 維和第 `dim1` 維交換。 => 複雜 => einops 簡化
+
+* `jaxtyping`
+  ```python
+  # How do you keep track of tensor dimensions?
+  # Old way:
+  x = torch.ones(2, 2, 1, 3)  # batch seq heads hidden  @inspect x
+  # New (jaxtyping) way:
+  x: Float[torch.Tensor, "batch seq heads hidden"] = torch.ones(2, 2, 1, 3)  # @inspect x
+  # Note: this is just documentation (no enforcement).
+  ```
+
+* `einops_einsum`
+  * Example 1: 和 `a @ b` 等價
+    ```python
+    >>> import torch
+    >>> a = torch.tensor([[1,2,3], [4,5,6]])
+    >>> b = torch.tensor([[7,8],[9,10],[11,12]])
+    >>> torch.einsum("ik,kj->ij", a, b)
+    tensor([[ 58,  64],
+            [139, 154]])
+    ```
+
+* Example 2: 注意 `torch.einsum` 只接受單一 character 作為 dimension，不支持像是 `batch` 這種 multi-character 的 dimension。
+  ```python
+  >>> import torch
+  >>> x = torch.ones(2, 3, 4)
+  >>> y = torch.ones(2, 3, 4)
+  >>> torch.einsum("bsh,bth->bst", x, y)
+  tensor([[[4., 4., 4.],
+          [4., 4., 4.],
+          [4., 4., 4.]],
+
+          [[4., 4., 4.],
+          [4., 4., 4.],
+          [4., 4., 4.]]])
+
+  >>> from einops import einsum
+  >>> z = einsum(x, y, "batch seq1 hidden, batch seq2 hidden -> batch seq1 seq2")
+  >>> z
+  tensor([[[4., 4., 4.],
+          [4., 4., 4.],
+          [4., 4., 4.]],
+
+          [[4., 4., 4.],
+          [4., 4., 4.],
+          [4., 4., 4.]]])
+  ```
