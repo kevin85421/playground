@@ -73,7 +73,7 @@ def main() -> None:
     permutation = (
         Permutation.identity(table)
         .select_columns(["id", "score"])
-        .with_batch_size(64)
+        .with_batch_size(4)
         .with_format("torch")
     )
 
@@ -87,6 +87,7 @@ def main() -> None:
             f"batch {i}: type={type(batch).__name__}, "
             f"shape={tuple(batch.shape)}, dtype={batch.dtype}"
         )
+        print(batch)
         if i >= 2:
             break
 
