@@ -82,6 +82,16 @@ def main() -> None:
     loader = DataLoader(LancePermutationDataset(permutation), batch_size=None)
 
     # 4. Iterate
+    #
+    # batch 0: type=Tensor, shape=(2, 4), dtype=torch.float64
+    # tensor([[0.0000e+00, 1.0000e+00, 2.0000e+00, 3.0000e+00], => "id" column
+    #         [0.0000e+00, 1.0000e-03, 2.0000e-03, 3.0000e-03]], dtype=torch.float64) => "score" column
+    # batch 1: type=Tensor, shape=(2, 4), dtype=torch.float64
+    # tensor([[4.0000e+00, 5.0000e+00, 6.0000e+00, 7.0000e+00],
+    #         [4.0000e-03, 5.0000e-03, 6.0000e-03, 7.0000e-03]], dtype=torch.float64)
+    # batch 2: type=Tensor, shape=(2, 4), dtype=torch.float64
+    # tensor([[8.0000e+00, 9.0000e+00, 1.0000e+01, 1.1000e+01],
+    #         [8.0000e-03, 9.0000e-03, 1.0000e-02, 1.1000e-02]], dtype=torch.float64)
     for i, batch in enumerate(loader):
         print(
             f"batch {i}: type={type(batch).__name__}, "
