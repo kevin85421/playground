@@ -21,7 +21,11 @@ import pyarrow.parquet as pq
 
 
 def generate_table(num_rows: int, str_len: int, seed: int = 0) -> pa.Table:
-    """Build a table of (id: int64, value: string of `str_len` chars)."""
+    """Build a table of (id: int64, small: int32, value: string of `str_len` chars).
+
+    `small` is ~4 bytes per row vs `value` ~1000 bytes — used to compare
+    random-access cost when the requested column is tiny.
+    """
     rng = np.random.default_rng(seed)
     alphabet = np.frombuffer(
         (string.ascii_letters + string.digits).encode(), dtype=np.uint8
@@ -34,6 +38,7 @@ def generate_table(num_rows: int, str_len: int, seed: int = 0) -> pa.Table:
     return pa.table(
         {
             "id": pa.array(np.arange(num_rows, dtype=np.int64)),
+            "small": pa.array(rng.integers(0, 1000, size=num_rows, dtype=np.int32)),
             "value": pa.array(values, type=pa.string()),
         }
     )
@@ -52,17 +57,17 @@ def write_parquet(table: pa.Table, path: Path, row_group_size: int) -> None:
     pq.write_table(table, str(path), row_group_size=row_group_size)
 
 
-def bench_lance(path: Path, queries: list[np.ndarray]) -> list[float]:
+def bench_lance(path: Path, queries: list[np.ndarray], column: str) -> list[float]:
     dataset = lance.dataset(str(path))
     durations = []
     for indices in queries:
         t0 = time.perf_counter()
-        _ = dataset.take(indices.tolist(), columns=["value"])
+        _ = dataset.take(indices.tolist(), columns=[column])
         durations.append(time.perf_counter() - t0)
     return durations
 
 
-def bench_parquet_naive(path: Path, queries: list[np.ndarray]) -> list[float]:
+def bench_parquet_naive(path: Path, queries: list[np.ndarray], column: str) -> list[float]:
     """Read the whole file every query and `take()` from it.
 
     This is the "no random-access support" baseline — it's what you get with a
@@ -71,13 +76,13 @@ def bench_parquet_naive(path: Path, queries: list[np.ndarray]) -> list[float]:
     durations = []
     for indices in queries:
         t0 = time.perf_counter()
-        table = pq.read_table(str(path), columns=["value"])
+        table = pq.read_table(str(path), columns=[column])
         _ = table.take(pa.array(indices))
         durations.append(time.perf_counter() - t0)
     return durations
 
 
-def bench_parquet_row_group(path: Path, queries: list[np.ndarray]) -> list[float]:
+def bench_parquet_row_group(path: Path, queries: list[np.ndarray], column: str) -> list[float]:
     """Only read the row groups that contain the requested indices.
 
     A fairer comparison: parquet can prune row groups, but it still has to read
@@ -93,7 +98,7 @@ def bench_parquet_row_group(path: Path, queries: list[np.ndarray]) -> list[float
         t0 = time.perf_counter()
         per_idx_rg = np.searchsorted(rg_starts, indices, side="right") - 1
         rg_ids = np.unique(per_idx_rg)
-        table = pf.read_row_groups(rg_ids.tolist(), columns=["value"])
+        table = pf.read_row_groups(rg_ids.tolist(), columns=[column])
         # offset of each picked row group within the concatenated read result
         cursor_in_read = {}
         cursor = 0
@@ -175,12 +180,15 @@ def main() -> None:
     print(f"\nrunning {args.num_queries} queries x {args.rows_per_query} rows each "
           f"(total {args.num_queries * args.rows_per_query:,} rows)...")
 
-    summarize("lance.dataset.take",
-              bench_lance(lance_path, queries), rows_per_query)
-    summarize("parquet (read whole file per query)",
-              bench_parquet_naive(parquet_path, queries), rows_per_query)
-    summarize(f"parquet (row-group prune, group_size={args.row_group_size})",
-              bench_parquet_row_group(parquet_path, queries), rows_per_query)
+    for column in ["value", "small"]:
+        print(f"\n========== column = '{column}' "
+              f"({'~1000B/row' if column == 'value' else '4B/row'}) ==========")
+        summarize("lance.dataset.take",
+                  bench_lance(lance_path, queries, column), rows_per_query)
+        summarize("parquet (read whole file per query)",
+                  bench_parquet_naive(parquet_path, queries, column), rows_per_query)
+        summarize(f"parquet (row-group prune, group_size={args.row_group_size})",
+                  bench_parquet_row_group(parquet_path, queries, column), rows_per_query)
 
 
 if __name__ == "__main__":
