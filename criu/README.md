@@ -62,9 +62,42 @@ bash cuda_checkpoint.sh
   * `unlock`：讓 CUDA API call 繼續。
   * `--toggle` = `lock + checkpoint` 或 `restore + unlock` 一次做完。
 * 順序：`lock → checkpoint → criu dump → criu restore → restore → unlock`。
-* `--device-map` 必須涵蓋 process 看得到的**所有** GPU（所以其他卡 map 到自己）。
+* `--device-map` 用來在 restore 時換卡，見下面的說明。
 * 換卡對 process 是透明的：它還是以為自己在 device 0，連印出來的 PCI bus id 都是舊的，但 `nvidia-smi` 顯示它已經在 `15:00.0`。
 * Image 大小約等於 GPU 記憶體用量（這裡 418 MiB → 451M）。大模型動輒幾十 GB，dump/restore 的 I/O 會是主要成本。
+
+### `--device-map`
+
+`--device-map` 告訴 `cuda-checkpoint`：checkpoint 時用的是哪張 GPU，restore 後要放到哪張 GPU 上。
+
+* 格式：用逗號分隔多組 `舊UUID=新UUID`。左邊是 checkpoint 時 process 看到的 GPU，右邊是 restore 後實際要用的 GPU。
+* GPU 用 UUID 指定，可以用 `nvidia-smi --query-gpu=uuid --format=csv,noheader` 查。
+
+範例裡的 `<GPU0>=<GPU1>,<GPU1>=<GPU0>,<其他>=<自己>`：
+
+| 寫法 | 意思 |
+|---|---|
+| `<GPU0>=<GPU1>` | 原本在 GPU 0 上的東西，搬到 GPU 1 |
+| `<GPU1>=<GPU0>` | 原本在 GPU 1 上的東西，搬到 GPU 0 |
+| `<其他>=<自己>` | GPU 2 到 7 不動，各自對應到自己 |
+
+實際指令會換成真的 UUID，例如 `GPU-6d638d2f-...=GPU-afa48f98-...`，所以很長。
+
+為什麼要讓 GPU 0 和 GPU 1 對調，而不是只寫 `<GPU0>=<GPU1>`：
+
+* 這個 process 只用了 GPU 0，但它的 CUDA 環境看得到全部 8 張卡（沒有設 `CUDA_VISIBLE_DEVICES`）。
+* 對應要一對一：每張舊卡對到一張新卡，不能兩張舊卡對到同一張新卡。只寫 GPU 0 → GPU 1 的話，原本的 GPU 1 就沒有地方可以對，最簡單的一對一寫法就是 0 和 1 互換。
+* 所以範例把其他 6 張也寫進去，各自對到自己，讓對應表完整。（沒有測試過只寫部分 GPU 時 `cuda-checkpoint` 會怎麼處理。）
+
+Restore 後 process 看到什麼：
+
+* 換卡對 process 是透明的。它的 CUDA device 0 背後其實已經是實體的 GPU 1，但它還是叫它 device 0。
+* 連 `cudaDeviceGetPCIBusId` 回傳的都還是舊的 `0F:00.0`；只有從外面用 `nvidia-smi` 看，才會發現它實際跑在 `15:00.0`。
+
+實際用途：
+
+* 搬到另一台機器：不同節點的 GPU UUID 都不一樣，restore 時要把舊節點的每張卡對到新節點的卡，否則 CUDA 找不到原本的 GPU。
+* 同一台機器換卡：例如原本那張卡要維修，或要把工作集中到某幾張卡上，騰出整張卡給別人用。
 
 ## 重點整理
 
