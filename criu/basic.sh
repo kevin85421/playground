@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 01 — The smallest dump/restore: freeze a process to disk, kill it, bring it back.
+# The smallest dump/restore: freeze a process to disk, kill it, bring it back.
 set -euo pipefail
 
 step() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
@@ -10,7 +10,7 @@ alive() { kill -0 "$1" 2>/dev/null; }
 [ "$(id -u)" = 0 ] || { echo "run as root (CRIU needs CAP_SYS_ADMIN)"; exit 1; }
 command -v criu >/dev/null || { echo "criu not installed"; exit 1; }
 
-WORK=/tmp/criu-examples/01_basic
+WORK=/tmp/criu-examples/basic
 rm -rf "$WORK"; mkdir -p "$WORK"; cd "$WORK"
 trap 'pkill -f "python3 counter.py" 2>/dev/null || true' EXIT
 
