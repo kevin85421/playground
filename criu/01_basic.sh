@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 # 01 — The smallest dump/restore: freeze a process to disk, kill it, bring it back.
-source "$(dirname "$0")/common.sh"
-init 01_basic
-CLEANUP_PATTERNS=("python3 counter.py")
+set -euo pipefail
+
+step() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
+note() { printf '\033[2m    # %s\033[0m\n' "$*"; }
+run()  { printf '\033[1;33m$ %s\033[0m\n' "$*"; eval "$@"; }
+alive() { kill -0 "$1" 2>/dev/null; }
+
+[ "$(id -u)" = 0 ] || { echo "run as root (CRIU needs CAP_SYS_ADMIN)"; exit 1; }
+command -v criu >/dev/null || { echo "criu not installed"; exit 1; }
+
+WORK=/tmp/criu-examples/01_basic
+rm -rf "$WORK"; mkdir -p "$WORK"; cd "$WORK"
+trap 'pkill -f "python3 counter.py" 2>/dev/null || true' EXIT
 
 cat > counter.py <<'EOF'
 import os, time
@@ -16,7 +26,7 @@ EOF
 step "Start a counter that prints once per second"
 note "setsid: detach from this shell's session/terminal, otherwise dump and restore both need --shell-job"
 setsid python3 counter.py > out.log 2>&1 < /dev/null &
-PID=$(wait_pid "python3 counter.py")
+PID=$!
 sleep 3
 run "tail -n 2 out.log"
 
@@ -24,8 +34,9 @@ step "criu dump: freeze the process tree and write its state into ./img"
 note "dump kills the process after a successful dump (unless you pass --leave-running)"
 mkdir img
 run "criu dump -t $PID -D img -o dump.log"
+wait "$PID" 2>/dev/null || true   # reap it, so its PID is free again for restore
 alive "$PID" && echo "still alive?" || echo "pid $PID is gone"
-run "ls img | head -20"
+run "ls img"
 run "du -sh img"
 
 step "Nothing happens while it is on disk"
