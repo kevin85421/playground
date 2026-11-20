@@ -7,7 +7,7 @@ CRIU（Checkpoint/Restore In Userspace）可以把一個正在跑的 Linux proce
 * 只能在 Linux 上跑（依賴 ptrace、`/proc`、namespaces、`CONFIG_CHECKPOINT_RESTORE`），Mac 要開 Linux VM。
 * 需要 root / `CAP_SYS_ADMIN`（或 `CAP_CHECKPOINT_RESTORE`），在容器裡通常要 privileged 且關掉 seccomp。
 
-## 最基本的 dump / restore
+## Example: 最基本的 dump / restore
 
 ```bash
 bash basic.sh
@@ -33,7 +33,7 @@ bash basic.sh
 * 用 `setsid` 啟動是為了脫離目前 shell 的 session / terminal；若 process 綁在 terminal 上，dump 和 restore 都要加 `--shell-job`。
 * `img/` 裡：`core-<pid>.img`（CPU 暫存器、signal 等）、`mm-` / `pagemap-` / `pages-`（記憶體）、`files.img` / `fdinfo-`（fd）、`pstree.img`（process tree）。
 
-## GPU process：cuda-checkpoint + CRIU，並換到另一張 GPU
+## Example: GPU process：cuda-checkpoint + CRIU，並換到另一張 GPU
 
 ```bash
 bash cuda_checkpoint.sh
