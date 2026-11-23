@@ -31,7 +31,6 @@ GPU 大部分時間都在等 CPU 送下一個 kernel —— 這叫 **launch-boun
 * `ms/iter`：steady-state 延遲（CUDA event 計時）
 * `speedup`：相對於第一個 mode（預設是 eager）
 * `launches`：每次 forward CPU 端呼叫幾次 `*LaunchKernel` / `cudaGraphLaunch`（用 `torch.profiler` 數）
-* `max |diff|`：和 eager 輸出的最大誤差（bf16 下 1e-2 左右屬正常，因為 fusion 改變了運算順序）
 
 ### 實測：A100-SXM4-40GB, torch 2.7.1+cu128, bf16, dim=512, depth=8
 
