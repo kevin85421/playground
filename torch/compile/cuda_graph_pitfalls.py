@@ -77,6 +77,8 @@ def demo_cpu_sync_in_capture():
             fn(static_x)
         print("  居然成功了？")
     except Exception as e:  # noqa: BLE001
+        # .item() 底下是 cudaMemcpy + sync，capture 中不合法；
+        # 錯誤通常以 "operation failed due to a previous error during capture" 浮出來
         print(f"  capture 失敗: {type(e).__name__}: {str(e).splitlines()[0]}")
 
     # torch.compile 遇到 .item() 不會報錯，而是 graph break：
@@ -93,7 +95,9 @@ def demo_dynamic_shapes():
     lin = torch.nn.Linear(256, 256, device="cuda")
     fn = torch.compile(lambda x: torch.relu(lin(x)), mode="reduce-overhead")
 
-    with torch.inference_mode():
+    # 用 no_grad 而不是 inference_mode：inference tensor 會被 cudagraph trees 留住，
+    # 之後的手動 capture 會撞到 "Inplace update to inference tensor" 錯誤
+    with torch.no_grad():
         for bs in [8, 8, 8, 16, 16, 32, 8, 33, 34]:
             x = torch.randn(bs, 256, device="cuda")
             torch.cuda.synchronize()
@@ -111,7 +115,8 @@ def main():
     demo_output_aliasing()
     demo_new_input_ignored()
     demo_dynamic_shapes()
-    # 放最後：capture 失敗有時會讓 CUDA context 進入錯誤狀態
+    # 一定要放最後：capture 失敗後 CUDA RNG 會卡在 capture 狀態，
+    # 之後任何 random init 都會報 "Offset increment outside graph capture"
     demo_cpu_sync_in_capture()
 
 

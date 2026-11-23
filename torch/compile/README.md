@@ -33,13 +33,48 @@ GPU 大部分時間都在等 CPU 送下一個 kernel —— 這叫 **launch-boun
 * `launches`：每次 forward CPU 端呼叫幾次 `*LaunchKernel` / `cudaGraphLaunch`（用 `torch.profiler` 數）
 * `max |diff|`：和 eager 輸出的最大誤差（bf16 下 1e-2 左右屬正常，因為 fusion 改變了運算順序）
 
-預期會看到的趨勢（實際數字依 GPU 而定）：
+### 實測：A100-SXM4-40GB, torch 2.7.1+cu128, bf16, dim=512, depth=8
 
-* **batch 小**：`launches` 從 eager 的上百次 → compile 的幾十次 → CUDA graph 的 **1** 次；
-  CUDA graph 和 `compile+cudagraph` 的加速最明顯（常見 3–10x）。
-* **batch 大**：時間被 matmul 主導，已經是 compute-bound，CUDA graph 幾乎沒幫助；
-  剩下的加速來自 fusion 減少 memory traffic，幅度小很多。
-* `first call`：eager / manual CUDA graph 是毫秒級，`torch.compile` 是秒級到數十秒級。
+```
+=== batch size 1 ===
+mode                  first call   ms/iter  speedup  launches  max |diff|
+eager                      0.00s     0.951    1.00x        65    0.00e+00
+cuda_graph                 0.08s     0.188    5.05x         1    0.00e+00
+compile                    3.69s     0.582    1.63x        33    3.12e-02
+compile+cudagraph          1.58s     0.117    8.12x         2    3.12e-02
+
+=== batch size 16 ===
+eager                      0.00s     1.142    1.00x        49    0.00e+00
+cuda_graph                 0.15s     0.235    4.86x         1    0.00e+00
+compile                    1.98s     0.696    1.64x        49    4.69e-02
+compile+cudagraph          1.73s     0.186    6.14x         2    4.69e-02
+
+=== batch size 256 ===
+eager                      0.00s     1.171    1.00x        49    0.00e+00
+cuda_graph                 0.16s     0.276    4.24x         1    0.00e+00
+compile                    1.59s     0.657    1.78x        41    6.25e-02
+compile+cudagraph          1.75s     0.222    5.26x         2    6.25e-02
+
+=== batch size 4096 ===
+eager                      0.00s     1.424    1.00x        49    0.00e+00
+cuda_graph                 0.19s     1.367    1.04x         1    0.00e+00
+compile                    1.73s     1.219    1.17x        33    6.25e-02
+compile+cudagraph          1.76s     1.207    1.18x         2    6.25e-02
+```
+
+觀察：
+
+* **batch 1–256 是 launch-bound**：eager 每次 forward 約 1 ms，幾乎不隨 batch 變化 ——
+  時間都花在 CPU 送 49 個 kernel（每層 6 個 × 8 層 + head）。
+  只要把 launch 收成 1 次（`cuda_graph`）就快 4–5x；再加上 fusion（`compile+cudagraph`）可到 5–8x。
+* **只 fuse 不用 CUDA graph（`compile`）只快 ~1.6x**：kernel 數量減少了，但每次 launch 的 CPU 成本還在。
+  batch 16 甚至 launch 數沒變（Inductor 對這個 shape 選了不同的 matmul / epilogue 組合），
+  但 Triton kernel 的 launch path 比 eager dispatcher 輕，所以仍然變快。
+* **batch 4096 變成 compute-bound**：GPU 時間 > CPU launch 時間，CUDA graph 只快 4%；
+  剩下 ~17% 來自 fusion 省下的 memory traffic。
+* `first call`：手動 CUDA graph 只要 0.1–0.2 s；`torch.compile` 第一次 3.7 s，
+  之後 ~1.6 s 是因為 Inductor 的 on-disk cache（`torch._dynamo.reset()` 不會清它）。
+* `max |diff|` 在 bf16 下 3e-2 ~ 6e-2：fusion 改變了累加順序與中間結果的精度，不是 bug。
 
 ## `cuda_graph_pitfalls.py`
 
@@ -51,8 +86,25 @@ GPU 大部分時間都在等 CPU 送下一個 kernel —— 這叫 **launch-boun
    `torch.compile(mode="reduce-overhead")` 會自動幫你做這個 copy。
 3. **shape 改變**：每個新 shape 都要重新 compile 或重新錄一份 graph。
    用 `TORCH_LOGS=recompiles` 可以看到原因；實務上會把 batch pad 到幾個固定 bucket（vLLM 就是這樣做）。
-4. **capture 中不能 CPU sync**：`.item()`、data-dependent control flow 在 manual capture 會直接失敗；
-   `torch.compile` 則是 graph break，切成多段 graph、中間回 eager（用 `torch._dynamo.explain` 或 `TORCH_LOGS=graph_breaks` 看）。
+   A100 上實測（`reduce-overhead`，單層 Linear）：
+
+   ```
+   bs=8    1035.17 ms   # compile (static shape) + warmup
+   bs=8     211.77 ms   # 錄 CUDA graph
+   bs=8       0.32 ms   # replay
+   bs=16    169.38 ms   # 新 shape -> 以 dynamic shape 重新 compile
+   bs=16    194.11 ms   # 錄 CUDA graph
+   bs=32     11.23 ms   # 不用 recompile，但要為這個 shape 錄新的 graph
+   bs=8       1.95 ms   # dynamic graph 下 bs=8 也要重錄一次
+   bs=33      1.89 ms
+   bs=34      1.79 ms
+   ```
+4. **capture 中不能 CPU sync**：`.item()`、data-dependent control flow 在 manual capture 會直接失敗
+   （錯誤訊息是 `operation failed due to a previous error during capture`）；
+   `torch.compile` 則是 graph break，切成多段 graph、中間回 eager（實測 `graph_count=2, graph_break_count=1`；
+   用 `torch._dynamo.explain` 或 `TORCH_LOGS=graph_breaks` 看）。
+   失敗的 capture 會讓 CUDA RNG 卡在 capture 狀態，之後 `nn.Linear(...)` 初始化會報
+   `Offset increment outside graph capture`，所以這個 demo 放在最後。
 
 ## 什麼時候用哪個
 
