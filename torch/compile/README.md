@@ -36,29 +36,29 @@ GPU 大部分時間都在等 CPU 送下一個 kernel —— 這叫 **launch-boun
 
 ```
 === batch size 1 ===
-mode                  first call   ms/iter  speedup  launches  max |diff|
-eager                      0.00s     0.951    1.00x        65    0.00e+00
-cuda_graph                 0.08s     0.188    5.05x         1    0.00e+00
-compile                    3.69s     0.582    1.63x        33    3.12e-02
-compile+cudagraph          1.58s     0.117    8.12x         2    3.12e-02
+mode                  first call   ms/iter  speedup  launches
+eager                      0.00s     0.951    1.00x        65
+cuda_graph                 0.08s     0.188    5.05x         1
+compile                    3.69s     0.582    1.63x        33
+compile+cudagraph          1.58s     0.117    8.12x         2
 
 === batch size 16 ===
-eager                      0.00s     1.142    1.00x        49    0.00e+00
-cuda_graph                 0.15s     0.235    4.86x         1    0.00e+00
-compile                    1.98s     0.696    1.64x        49    4.69e-02
-compile+cudagraph          1.73s     0.186    6.14x         2    4.69e-02
+eager                      0.00s     1.142    1.00x        49
+cuda_graph                 0.15s     0.235    4.86x         1
+compile                    1.98s     0.696    1.64x        49
+compile+cudagraph          1.73s     0.186    6.14x         2
 
 === batch size 256 ===
-eager                      0.00s     1.171    1.00x        49    0.00e+00
-cuda_graph                 0.16s     0.276    4.24x         1    0.00e+00
-compile                    1.59s     0.657    1.78x        41    6.25e-02
-compile+cudagraph          1.75s     0.222    5.26x         2    6.25e-02
+eager                      0.00s     1.171    1.00x        49
+cuda_graph                 0.16s     0.276    4.24x         1
+compile                    1.59s     0.657    1.78x        41
+compile+cudagraph          1.75s     0.222    5.26x         2
 
 === batch size 4096 ===
-eager                      0.00s     1.424    1.00x        49    0.00e+00
-cuda_graph                 0.19s     1.367    1.04x         1    0.00e+00
-compile                    1.73s     1.219    1.17x        33    6.25e-02
-compile+cudagraph          1.76s     1.207    1.18x         2    6.25e-02
+eager                      0.00s     1.424    1.00x        49
+cuda_graph                 0.19s     1.367    1.04x         1
+compile                    1.73s     1.219    1.17x        33
+compile+cudagraph          1.76s     1.207    1.18x         2
 ```
 
 觀察：

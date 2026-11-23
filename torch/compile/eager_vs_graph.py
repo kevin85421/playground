@@ -10,7 +10,6 @@
   * first call  : 第一次呼叫的時間（compile / capture 成本）
   * ms/iter     : steady-state 每次 forward 的時間（CUDA event 計時）
   * launches    : 每次 forward CPU 端送出幾次 launch（kernel launch + graph launch）
-  * max |diff|  : 和 eager 輸出的最大誤差
 
 用法：
   python eager_vs_graph.py
@@ -149,20 +148,18 @@ def count_launches_per_iter(fn, x, iters: int = 10) -> float:
     return n / iters
 
 
-def run_one(mode: str, model, x, ref, args):
+def run_one(mode: str, model, x, args):
     torch._dynamo.reset()  # 每個 mode 從乾淨的 compile cache 開始
 
     t0 = time.perf_counter()
     fn = MODES[mode](model, x)
-    y = fn(x)
+    fn(x)
     torch.cuda.synchronize()
     first_call_s = time.perf_counter() - t0
 
-    # clone：CUDA graph 的輸出 buffer 之後會被覆蓋
-    max_diff = (y.clone().float() - ref.float()).abs().max().item()
     ms = time_ms_per_iter(fn, x, args.iters, args.warmup)
     launches = count_launches_per_iter(fn, x) if args.profile else float("nan")
-    return first_call_s, ms, launches, max_diff
+    return first_call_s, ms, launches
 
 
 def main():
@@ -191,17 +188,16 @@ def main():
     with torch.inference_mode():
         for bs in map(int, args.batch_sizes.split(",")):
             x = torch.randn(bs, args.dim, device=device, dtype=dtype)
-            ref = model(x).clone()
 
             print(f"\n=== batch size {bs} ===")
             print(f"{'mode':<20}{'first call':>12}{'ms/iter':>10}{'speedup':>9}"
-                  f"{'launches':>10}{'max |diff|':>12}")
+                  f"{'launches':>10}")
             eager_ms = None
             for mode in modes:
-                first, ms, launches, diff = run_one(mode, model, x, ref, args)
+                first, ms, launches = run_one(mode, model, x, args)
                 eager_ms = eager_ms or ms
                 print(f"{mode:<20}{first:>11.2f}s{ms:>10.3f}{eager_ms / ms:>8.2f}x"
-                      f"{launches:>10.0f}{diff:>12.2e}")
+                      f"{launches:>10.0f}")
 
 
 if __name__ == "__main__":
