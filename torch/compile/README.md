@@ -73,7 +73,6 @@ compile+cudagraph          1.76s     1.207    1.18x         2    6.25e-02
   剩下 ~17% 來自 fusion 省下的 memory traffic。
 * `first call`：手動 CUDA graph 只要 0.1–0.2 s；`torch.compile` 第一次 3.7 s，
   之後 ~1.6 s 是因為 Inductor 的 on-disk cache（`torch._dynamo.reset()` 不會清它）。
-* `max |diff|` 在 bf16 下 3e-2 ~ 6e-2：fusion 改變了累加順序與中間結果的精度，不是 bug。
 
 ## `cuda_graph_pitfalls.py`
 
